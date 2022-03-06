@@ -1,0 +1,15 @@
+# Build files
+*.obj
+/celeste.gb
+/celeste.map
+
+# Generates files
+/gen/node_modules/
+/gen/celeste.lua
+/gen/celeste.asm
+
+# IDE files
+/.vscode/
+
+# OS files
+.DS_Store
