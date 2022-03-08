@@ -2,10 +2,13 @@ gen = gen/celeste.asm
 asm = \
 	$(gen) \
 	src/palette.asm \
+	src/flags.asm \
+	src/oam.asm \
 	src/engine/reg.asm \
 	src/engine/mem.asm \
 	src/engine/rand.asm \
 	src/engine/video.asm \
+	src/engine/map.asm \
 	src/engine/engine.asm \
 	src/main.asm
 obj = $(asm:.asm=.obj)
@@ -18,7 +21,7 @@ clean:
 .PHONY: all clean
 
 $(gb): $(obj)
-	rgblink -o $@ $^ -m $(map)
+	rgblink -o $@ $^ -m $(map) -w
 	rgbfix $@ -vCj -t CELESTE -l 0x33 -k 00
 %.obj: %.asm
 	rgbasm -o $@ $^ -Weverything

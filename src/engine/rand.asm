@@ -5,7 +5,7 @@ section "rand_timer", rom0[$0050]
 section "rand_rom", rom0
 
 
-; () => a
+; () => void
 init_rand::
     ld hl, rand_state
     ld a, $ff

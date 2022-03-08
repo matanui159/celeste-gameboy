@@ -19,6 +19,8 @@ def    VRAM_TMAP equ $9800
 export VRAM_TMAP
 
 ; CGP registers
+def    REG_VBK  equ $ff4f
+export REG_VBK
 def    REG_BGPI equ $ff68
 export REG_BGPI
 def    REG_BGPD equ $ff69

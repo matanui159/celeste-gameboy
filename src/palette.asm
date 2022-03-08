@@ -26,6 +26,16 @@ celeste_bgp::
     ; springs
     ; TODO: this could be merged with fall floors??
     dw BLACK, DARK_GREY, BROWN, ORANGE
+    ; TODO: the next three are very similar yet take up three palettes
+    ; lower tree and grass
+    dw BLACK, BROWN, DARK_GREEN, GREEN
+    ; upper tree
+    dw BLACK, DARK_GREEN, GREEN, WHITE
+    ; flower
+    dw BLACK, DARK_GREEN, RED, PINK
+
+    ; TODO: remove this palette, its only here as a background palette for testing
+    dw BLACK, DARK_GREEN, LIGHT_PEACH, RED
 .end::
 
 celeste_obp::

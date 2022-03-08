@@ -1,7 +1,7 @@
 section "mem_rom", rom0
 
 
-; (dst: hl, src: bc, size: de) => void
+; (dst: hl, src: bc, size: de) => void <dst_end: hl, src_end: hl, zero: de>
 memcpy::
     push de
     inc d
@@ -20,6 +20,7 @@ endr
     dec d
     jr nz, .fast
     pop de
+    ld d, 0
 
     inc e
     jr .slow_start
@@ -33,7 +34,7 @@ endr
     ret
 
 
-; (dst: hl, byte: a, size: de) => void
+; (dst: hl, byte: a, size: de) => void <dst_end: hl, byte: a, zero: de>
 memset::
     inc d
     jr .fast_start

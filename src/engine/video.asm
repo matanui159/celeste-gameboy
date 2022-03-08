@@ -56,15 +56,13 @@ init_video::
     xor a, a
     ldh [video_state], a
 
-    ld hl, video_oam
-    ld de, video_oam.end - video_oam
+    ld hl, celeste_oam
+    ld de, celeste_oam.end - celeste_oam
     call memset
 
-    ld a, $48
     ld hl, VRAM_TMAP
     ld de, $400
     call memset
-    xor a, a
 
     ld b, celeste_bgp.end - celeste_bgp
     ld c, low(REG_BGPI)
@@ -72,7 +70,7 @@ init_video::
     call copy_palette
 
     xor a, a
-    ld b, celeste_bgp.end - celeste_bgp
+    ld b, celeste_obp.end - celeste_obp
     ld hl, celeste_obp
     call copy_palette
 
@@ -85,6 +83,10 @@ init_video::
     ld bc, copy_oam_rom
     ld de, copy_oam.end - copy_oam
     call memcpy
+
+    xor a, a
+    call load_map
+    call show_map
 
     ld a, $93
     ldh [REG_LCDC], a
@@ -100,7 +102,7 @@ int_vblank:
     cp a, 3
     set 0, a
     jr nz, .return
-    ld a, high(video_oam)
+    ld a, high(celeste_oam)
     ld b, $40
     ld c, low(REG_DMA)
     call copy_oam
@@ -123,11 +125,6 @@ draw_video::
     jr nz, .wait
     ret
 
-
-section "video_wram", wram0, align[8]
-video_oam:
-    ds $a0
-.end:
 
 section "video_hram", hram
 ; bit 0: a singular frame has passed so the next frame will update and draw (to

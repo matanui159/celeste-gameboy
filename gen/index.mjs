@@ -44,13 +44,16 @@ const GD = [0,0,0,0,0,1,0,3,0,0,0,0,2,0,0,0];
 const SP = [0,0,0,0,0,1,2,3,0,0,0,0,0,0,0,0];
 const FF = [0,1,0,0,2,0,0,0,0,3,0,0,0,0,0,0];
 const SG = [0,0,0,0,2,1,0,0,0,3,0,0,0,0,0,0];
+const GR = [0,0,0,2,1,0,0,0,0,1,0,3,0,0,0,0];
+const TR = [0,0,0,1,0,0,0,3,0,0,0,2,0,0,0,0];
+const FL = [0,0,0,1,0,0,0,0,2,0,0,1,0,0,3,0];
 const PL = [0,0,0,1,0,0,0,2,3,0,0,0,0,0,0,2];
 const __ = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 const SPRITES = [
     GD,PL,PL,PL,PL,PL,PL,PL,__,__,__,__,__,__,__,__,
     GD,SP,SG,SG,__,__,__,FF,FF,FF,__,SP,__,__,__,__,
-    GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,SP,__,__,__,__,
-    GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,SP,__,__,__,__,
+    GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,SP,TR,__,__,__,
+    GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,GD,SP,GR,GR,FL,GR,
     GD,GD,GD,GD,GD,GD,__,__,GD,__,__,__,__,__,__,__,
     GD,GD,GD,GD,GD,GD,__,__,GD,__,__,__,__,__,__,__,
     __,__,GD,GD,GD,GD,__,GD,GD,__,__,__,__,__,__,__,
@@ -58,8 +61,8 @@ const SPRITES = [
 ];
 
 const asm = await fs.open('celeste.asm', 'w');
-await asm.write('section "celeste_rom", romx\n');
-await asm.write('celeste_sprites::\n');
+await asm.write('section "celeste_rom", romx, align[8]\n');
+await asm.write('celeste_sprites::');
 for (let i = 0; i < SPRITES.length; i += 1) {
     const sprite = SPRITES[i];
     const spriteX = i % 16;
@@ -77,4 +80,27 @@ for (let i = 0; i < SPRITES.length; i += 1) {
     }
 }
 await asm.write('.end::\n');
+
+await asm.write('\n\nceleste_maps::');
+for (let i = 0; i < 32; i += 1) {
+    const mapX = i % 8;
+    const mapY = Math.floor(i / 8);
+    let memoryOffset = mapY * 2048 + mapX * 16;
+    if (mapY < 2) {
+        memoryOffset += 0x2000;
+    }
+    await asm.write(`\n    ; #${i} (${mapX}, ${mapY})\n`);
+    for (let y = 0; y < 16; y += 1) {
+        await asm.write('    db ');
+        for (let x = 0; x < 16; x += 1) {
+            const byte = memory.readUInt8(memoryOffset + x);
+            if (x > 0) {
+                await asm.write(', ');
+            }
+            await asm.write(`$${byte.toString(16).padStart(2, '0')}`);
+        }
+        memoryOffset += 128;
+        await asm.write('\n');
+    }
+}
 await asm.close();
