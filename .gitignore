@@ -2,8 +2,9 @@
 *.obj
 /celeste.gb
 /celeste.map
+/imgui.ini
 
-# Generates files
+# Generated files
 /gen/node_modules/
 /gen/celeste.lua
 /gen/celeste.asm
