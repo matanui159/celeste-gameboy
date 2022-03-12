@@ -1,7 +1,3 @@
-section "rand_timer", rom0[$0050]
-    nop
-    jp int_timer
-
 section "rand_rom", rom0
 
 
@@ -52,19 +48,6 @@ rand::
     swap a
     xor a, c
     ret
-
-
-; () => void
-int_timer:
-    push af
-    push bc
-    push hl
-    ; add more entropy to the randomiser
-    call rand
-    pop hl
-    pop bc
-    pop af
-    reti
 
 
 section "rand_wram", wram0
