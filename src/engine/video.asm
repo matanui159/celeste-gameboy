@@ -1,21 +1,10 @@
+include "hardware.inc"
+
 section "video_vblank", rom0[$0040]
     nop
     jp int_vblank
 
 section "video_rom", rom0
-
-
-copy_oam_rom:
-load "video_load", hram
-; (src_hi: a, wait: b, reg: c) => void
-copy_oam:
-    ldh [c], a
-.loop:
-    dec b
-    jr nz, .loop
-    ret
-.end:
-endl
 
 
 ; (dst: a, size: b, reg: c, src: hl) => void <next_reg: c>
@@ -39,33 +28,27 @@ copy_palette:
 ; () => void
 init_video::
     ; check if the LCD is disabled
-    ld hl, REG_LCDC
-    bit 7, [hl]
+    ld hl, rLCDC
+    bit LCDCB_ON, [hl]
     jr z, .disabled
     ; if not wait for next vblank
-    ld b, l
-    ld l, low(REG_IE)
-    ld [hl], $01
-    ld l, low(REG_IF)
-    res 0, [hl]
+    ld a, IEF_VBLANK
+    ldh [rIE], a
+    xor a, a
+    ldh [rIF], a
     halt
-    ld l, b
-    res 7, [hl]
+    res LCDCB_ON, [hl]
 
 .disabled:
     xor a, a
     ldh [video_state], a
 
-    ld hl, celeste_oam
-    ld de, celeste_oam.end - celeste_oam
-    call memset
-
-    ld hl, VRAM_TMAP
-    ld de, $400
+    ld hl, _SCRN0
+    ld de, _SCRN1 - _SCRN0
     call memset
 
     ld b, celeste_bgp.end - celeste_bgp
-    ld c, low(REG_BGPI)
+    ld c, low(rBCPS)
     ld hl, celeste_bgp
     call copy_palette
 
@@ -74,22 +57,17 @@ init_video::
     ld hl, celeste_obp
     call copy_palette
 
-    ld hl, VRAM_TDAT
-    ld bc, celeste_sprites
-    ld de, celeste_sprites.end - celeste_sprites
-    call memcpy
-
-    ld hl, copy_oam
-    ld bc, copy_oam_rom
-    ld de, copy_oam.end - copy_oam
+    ld hl, _VRAM
+    ld bc, startof("game_sprites")
+    ld de, sizeof("game_sprites")
     call memcpy
 
     xor a, a
     call load_map
     call show_map
 
-    ld a, $93
-    ldh [REG_LCDC], a
+    ld a, LCDCF_BGON | LCDCF_BG8000 | LCDCF_ON
+    ldh [rLCDC], a
     ret
 
 
@@ -102,10 +80,10 @@ int_vblank:
     cp a, 3
     set 0, a
     jr nz, .return
-    ld a, high(celeste_oam)
-    ld b, $40
-    ld c, low(REG_DMA)
-    call copy_oam
+    ; ld a, high(celeste_oam)
+    ; ld b, $40
+    ; ld c, low(REG_DMA)
+    ; call copy_oam
     ld c, low(video_state)
     xor a, a
 .return:

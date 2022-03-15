@@ -1,3 +1,5 @@
+include "hardware.inc"
+
 section "map_rom", rom0
 
 
@@ -5,10 +7,10 @@ section "map_rom", rom0
 load_map::
     ; copy the map to memory
     ld hl, map
-    add a, high(celeste_maps)
+    add a, high(startof("game_maps"))
     ld b, a
     ld c, 0
-    ld de, map.end - map
+    ld de, $100
     call memcpy
 
     ; copy over the palettes from the flags
@@ -29,7 +31,7 @@ load_map::
 
 ; (src: bc) => void <src_end: bc>
 copy_map:
-    ld hl, VRAM_TMAP
+    ld hl, _SCRN0
     ld de, $10
 .loop:
     call memcpy
@@ -38,7 +40,7 @@ copy_map:
     ld a, c
     cp a, 0
     jr nz, .loop
-    ret    
+    ret
 
 
 ; () => void
@@ -46,10 +48,10 @@ show_map::
     ld bc, map
     call copy_map
     ld a, 1
-    ldh [REG_VBK], a
+    ldh [rVBK], a
     call copy_map
     xor a, a
-    ldh [REG_VBK], a
+    ldh [rVBK], a
     ret
 
 

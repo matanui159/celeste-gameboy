@@ -1,5 +1,6 @@
 # Build files
 *.obj
+*.mak
 /celeste.gb
 /celeste.map
 /imgui.ini

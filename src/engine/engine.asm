@@ -1,3 +1,5 @@
+include "hardware.inc"
+
 section "engine_rom", rom0
 
 
@@ -6,10 +8,10 @@ init_engine::
     di
     call init_rand
     call init_video
-    ld a, $01
-    ldh [REG_IE], a
+    ld a, IEF_VBLANK
+    ldh [rIE], a
     xor a, a
-    ldh [REG_IF], a
+    ldh [rIF], a
     ei
     ret
 

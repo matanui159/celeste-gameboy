@@ -7,10 +7,6 @@ init_rand::
     ld a, $ff
     ld [hl+], a
     ld [hl+], a
-    ld a, $80
-    ldh [REG_TMA], a
-    ld a, $04
-    ldh [REG_TAC], a
     ret
 
 

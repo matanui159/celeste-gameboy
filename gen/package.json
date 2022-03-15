@@ -2,9 +2,5 @@
     "private": true,
     "dependencies": {
         "pngjs": "^6.0.0"
-    },
-    "scripts": {
-        "gen": "node index.mjs",
-        "palette": "node palette.mjs"
     }
 }

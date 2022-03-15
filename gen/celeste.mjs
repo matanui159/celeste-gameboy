@@ -61,27 +61,27 @@ const SPRITES = [
 ];
 
 const asm = await fs.open('celeste.asm', 'w');
-await asm.write('section "celeste_rom", romx, align[8]\n');
-await asm.write('celeste_sprites::');
+await asm.write('section "game_sprites", romx, align[8]\n');
 for (let i = 0; i < SPRITES.length; i += 1) {
     const sprite = SPRITES[i];
     const spriteX = i % 16;
     const spriteY = Math.floor(i / 16);
     let memoryOffset = spriteY * 512 + spriteX * 4;
-    await asm.write(`\n    ; #${i} (${spriteX}, ${spriteY})\n`);
+    await asm.write('dw `');
     for (let y = 0; y < 8; y += 1) {
-        await asm.write('    dw `');
+        if (y > 0) {
+            await asm.write(',`');
+        }
         for (let x = 0; x < 4; x += 1) {
             const byte = memory.readUInt8(memoryOffset + x);
             await asm.write(`${sprite[byte & 0xf]}${sprite[byte >> 4]}`);
         }
         memoryOffset += 64;
-        await asm.write('\n');
     }
+    await asm.write('\n');
 }
-await asm.write('.end::\n');
 
-await asm.write('\n\nceleste_maps::');
+await asm.write('section "game_maps", romx, align[8]\n');
 for (let i = 0; i < 32; i += 1) {
     const mapX = i % 8;
     const mapY = Math.floor(i / 8);
@@ -89,18 +89,17 @@ for (let i = 0; i < 32; i += 1) {
     if (mapY < 2) {
         memoryOffset += 0x2000;
     }
-    await asm.write(`\n    ; #${i} (${mapX}, ${mapY})\n`);
+    await asm.write('db ');
     for (let y = 0; y < 16; y += 1) {
-        await asm.write('    db ');
         for (let x = 0; x < 16; x += 1) {
-            const byte = memory.readUInt8(memoryOffset + x);
-            if (x > 0) {
-                await asm.write(', ');
+            if (x > 0 || y > 0) {
+                await asm.write(',');
             }
+            const byte = memory.readUInt8(memoryOffset + x);
             await asm.write(`$${byte.toString(16).padStart(2, '0')}`);
         }
         memoryOffset += 128;
-        await asm.write('\n');
     }
+    await asm.write('\n');
 }
 await asm.close();
