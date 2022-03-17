@@ -38,7 +38,7 @@ There are a maximum of 6 balloons in the game.
 This is the special blocks that break when you step on them.
 
 ### `smoke`
-
+These usually seem to be rendered ontop of other sprites. Despite this never being mentioned specifically in the code, objects are usually rendered in spawn order so objects spawned later (eg. smoke) render ontop (there are a few exceptions to this). On the gameboy color (DMG doesn't have much control over this) it is possible to specify render priority (what renders on top) via the position in the OAM, where the first sprite is rendered ontop. Smoke rendering can be implemented using either by keeping the first part of the OAM free specifically for particles, or if there is an allocation scheme, allocating from the end of the OAM to the start (in reverse order).
 
 ### `fruit` and `fly_fruit`
 Yet again both of these have to be a sprite due to slight sine-wave movements. The fruit yet again has a start position and offset, while the flying fruit additionally has a vertical speed and "is flying" state. The flying strawberry will require three sprites to render. Due to palette limitations the center part will not have the start of the wings next to it and will share the same sprite as the non-flying strawberry. The wing sprites may need to be modified to include these parts (they seem to only currently be 7px wide).

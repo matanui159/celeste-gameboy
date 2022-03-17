@@ -15,7 +15,7 @@ def LAVENDER equ $418d
 def PINK equ $459f
 def LIGHT_PEACH equ $469f
 
-section "palette_rom", romx
+section "palette_rom", rom0
 celeste_bgp::
     ; ground & ice
     dw BLACK, DARK_GREY, BLUE, WHITE

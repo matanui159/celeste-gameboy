@@ -1,17 +1,5 @@
 # Build files
-*.obj
-*.mak
-/celeste.gb
-/celeste.map
+/bin/
 /imgui.ini
-
-# Generated files
-/gen/node_modules/
-/gen/celeste.lua
-/gen/celeste.asm
-
-# IDE files
 /.vscode/
-
-# OS files
 .DS_Store

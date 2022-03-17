@@ -1,39 +1,61 @@
-asm_flags = -isrc -Weverything
-link_flags = -w
-fix_flags = -vCj -t CELESTE -n 0x10
-binjgb_flags = -C 1
+CFLAGS = -Wall -Wextra -Wpedantic
+ASM_FLAGS = -isrc -Weverything
+LINK_FLAGS = -w
+FIX_FLAGS = -vCj -t CELESTE -n 0x10
+BINJGB_FLAGS = -C 1
 
-celeste = celeste.gb
-celeste_obj = \
-	gen/celeste.obj \
-	src/palette.obj \
-	src/flags.obj \
-	src/oam.obj \
-	src/engine/mem.obj \
-	src/engine/rand.obj \
-	src/engine/video.obj \
-	src/engine/map.obj \
-	src/engine/engine.obj \
-	src/main.obj
+CELESTE = bin/celeste.gb
+CELESTE_OBJ = \
+	bin/gen/gtiles.obj \
+	bin/gen/gmaps.obj \
+	bin/palette.obj \
+	bin/flags.obj \
+	bin/oam.obj \
+	bin/engine/mem.obj \
+	bin/engine/rand.obj \
+	bin/engine/object.obj \
+	bin/engine/video.obj \
+	bin/engine/map.obj \
+	bin/engine/engine.obj \
+	bin/main.obj
 
-all: $(celeste)
-.PHONY: all
--include $(celeste_obj:.obj=.mak)
+LUA = bin/celeste.lua
+LUA_GEN = bin/gen/glua
 
-$(celeste): $(celeste_obj)
-	rgblink -o $@ $^ -m $(@:.gb=.map) $(pad_flags)
-	rgbfix $@ $(fix_flags)
+all: $(CELESTE) $(LUA)
+clean:
+	rm -r bin
+.PHONY: all clean
+-include $(CELESTE_OBJ:.obj=.mak) $(CELESTE_OBJ:.obj=.d) $(LUA_GEN:=.d)
 
-%.obj: %.asm
-	rgbasm -o $@ $< -M $(@:.obj=.mak) -MP -isrc -Weverything
+MKDIR = mkdir -p $(dir $@)
+$(CELESTE): $(CELESTE_OBJ)
+	$(MKDIR)
+	rgblink -o $@ $^ -m $(@:.gb=.map) $(LINK_FLAGS)
+	rgbfix $@ $(FIX_FLAGS)
 
-gen/node_modules:
-	cd gen && npm ci
-gen/%.asm: gen/%.mjs gen/celeste.p8.png gen/node_modules
-	cd gen && node ../$<
+RGBASM = rgbasm -o $@ $< -M $(@:.obj=.mak) -MP $(ASM_FLAGS)
+bin/%.obj: src/%.asm
+	$(MKDIR)
+	$(RGBASM)
+bin/%.obj: bin/%.asm
+	$(MKDIR)
+	$(RGBASM)
 
-binjgb: $(celeste)
-	binjgb $< $(binjgb_flags)
-binjgb-debug: $(celeste)
-	binjgb-debugger $< -p $(binjgb_flags)
+GEN = $< > $@
+bin/gen/%.asm: bin/gen/% gen/celeste.p8.png
+	$(MKDIR)
+	$(GEN)
+$(LUA): $(LUA_GEN)
+	$(MKDIR)
+	$(GEN)
+
+bin/gen/%: gen/%.c
+	$(MKDIR)
+	$(CC) -o $@ $< -MMD -MP $(CFLAGS)
+
+binjgb: $(CELESTE)
+	binjgb $< $(BINJGB_FLAGS)
+binjgb-debug: $(CELESTE)
+	binjgb-debugger $< -p $(BINJGB_FLAGS)
 .PHONY: binjgb binjgb-debug

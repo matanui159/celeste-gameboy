@@ -58,8 +58,8 @@ init_video::
     call copy_palette
 
     ld hl, _VRAM
-    ld bc, startof("game_sprites")
-    ld de, sizeof("game_sprites")
+    ld bc, startof("game_cgb_tiles")
+    ld de, sizeof("game_cgb_tiles")
     call memcpy
 
     xor a, a
