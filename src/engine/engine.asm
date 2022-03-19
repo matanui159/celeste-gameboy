@@ -3,8 +3,9 @@ include "hardware.inc"
 section "engine_rom", rom0
 
 
-; () => void
+; (boot: a) => void
 init_engine::
+    ldh [engine_boot], a
     di
     call init_rand
     call init_video
@@ -22,3 +23,7 @@ run_engine::
     call rand
     call draw_video
     jr run_engine
+
+
+section "engine_hram", hram
+engine_boot:: db

@@ -4,9 +4,9 @@ static void print_tiles(
     const char *section,
     int get_index(const gen_palette_t *pal, uint8_t p8)
 ) {
-    printf("section \"%s\", romx, align[8]\n", section);
+    printf("section \"%s\", rom0\n", section);
     for (size_t i = 0; i < 128; i += 1) {
-        const gen_palette_t *pal = &game_palettes[tile_palettes[i]];
+        const gen_palette_t *pal = tile_palettes[i];
         size_t tile_x = i % 16;
         size_t tile_y = i / 16;
         uint8_t *data = &pico8_data[(tile_y * 128 + tile_x) * 4];

@@ -17,7 +17,7 @@ load_map::
     ld b, h
     ld c, l
     dec b
-    ld d, high(celeste_flags)
+    ld d, high(startof("game_attrs"))
 .loop:
     ld a, [bc]
     ld e, a
@@ -47,6 +47,10 @@ copy_map:
 show_map::
     ld bc, map
     call copy_map
+    ldh a, [engine_boot]
+    cp a, $11
+    ret nz
+    ; CGB attributes
     ld a, 1
     ldh [rVBK], a
     call copy_map
@@ -56,8 +60,5 @@ show_map::
 
 
 section "map_wram", wram0, align[8]
-map::
-    ds $100
-.end:
-map_attr:
-    ds $100
+map: ds $100
+map_attr: ds $100

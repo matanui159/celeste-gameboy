@@ -8,11 +8,11 @@ section "main_rom", rom0
 
 ; () => void
 main:
-    ld sp, main_stack.end
+    ld sp, main_stack
     call init_engine
     call run_engine
 
 
 section "main_wram", wram0
-main_stack: ds $100
-.end:
+    ds $100
+main_stack:

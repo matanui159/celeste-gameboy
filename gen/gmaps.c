@@ -2,7 +2,7 @@
 
 int main(void) {
     load_pico8();
-    printf("section \"game_maps\", romx, align[8]\n");
+    printf("section \"game_maps\", rom0, align[8]\n");
     for (size_t i = 0; i < 32; i += 1) {
         size_t map_x = i % 8;
         size_t map_y = i / 8;

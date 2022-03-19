@@ -47,21 +47,39 @@ init_video::
     ld de, _SCRN1 - _SCRN0
     call memset
 
-    ld b, celeste_bgp.end - celeste_bgp
-    ld c, low(rBCPS)
-    ld hl, celeste_bgp
-    call copy_palette
+    ldh a, [engine_boot]
+    cp a, $11
+    jr z, .cgb
 
-    xor a, a
-    ld b, celeste_obp.end - celeste_obp
-    ld hl, celeste_obp
-    call copy_palette
+    ld hl, _VRAM
+    ld bc, startof("game_dmg_tiles")
+    ld de, sizeof("game_dmg_tiles")
+    call memcpy
 
+    ld a, $1b
+    ldh [rBGP], a
+    ldh [rOBP0], a
+    ldh [rOBP1], a
+    jr .map
+
+.cgb:
     ld hl, _VRAM
     ld bc, startof("game_cgb_tiles")
     ld de, sizeof("game_cgb_tiles")
     call memcpy
 
+    xor a, a
+    ld b, sizeof("game_bg_palettes")
+    ld c, low(rBCPS)
+    ld hl, startof("game_bg_palettes")
+    call copy_palette
+
+    xor a, a
+    ld b, sizeof("game_obj_palettes")
+    ld hl, startof("game_obj_palettes")
+    call copy_palette
+
+.map:
     xor a, a
     call load_map
     call show_map
@@ -74,21 +92,13 @@ init_video::
 ; () => void
 int_vblank:
     push af
-    push bc
-    ld c, low(video_state)
-    ldh a, [c]
+    ldh a, [video_state]
     cp a, 3
     set 0, a
     jr nz, .return
-    ; ld a, high(celeste_oam)
-    ; ld b, $40
-    ; ld c, low(REG_DMA)
-    ; call copy_oam
-    ld c, low(video_state)
-    xor a, a
+    ; TODO
 .return:
-    ldh [c], a
-    pop bc
+    ldh [video_state], a
     pop af
     reti
 

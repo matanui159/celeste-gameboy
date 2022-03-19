@@ -12,35 +12,37 @@ init_rand::
 
 ; () => a
 rand::
+    ; ba = [rand_state]
     ld hl, rand_state
     ld a, [hl+]
     ld b, [hl]
-
-    ; x ^= x << 7
+    ; hl = ba
     ld l, a
     ld h, b
+    ; ac = ba << 7 (8 - 1)
     ld c, 0
     srl b
     rra
     rr c
+    ; ba = hl ^ ac
     xor a, h
     ld b, a
-    ; shift now for later, carry is 0 from xor
+    ; _h = (hl ^ ac) >> 9 (8 + 1, used below)
     rra
     ld h, a
     ld a, c
     xor a, l
-
-    ; x ^= x >> 9
+    ; ba ^= _h
     xor a, h
-
-    ; x ^= x << 8
+    ; bc = ba
     ld c, a
+    ; ac = bc ^ (ba << 8) 
     xor a, b
-
+    ; [rand_state] = ac
     ld hl, rand_state + 1
     ld [hl-], a
     ld [hl], c
+    ; a = swap(a) ^ c
     swap a
     xor a, c
     ret

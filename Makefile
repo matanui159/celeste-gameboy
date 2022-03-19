@@ -1,16 +1,17 @@
 CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -isrc -Weverything
-LINK_FLAGS = -w
-FIX_FLAGS = -vCj -t CELESTE -n 0x10
-BINJGB_FLAGS = -C 1
+LINK_FLAGS = -dt
+FIX_FLAGS = -vcj -t CELESTE -n 0x10
+DMG_FLAGS = --force-dmg -P 62 # BGB palette
+CGB_FLAGS = -C 1
+DEBUG_FLAGS = -p
 
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
 	bin/gen/gtiles.obj \
+	bin/gen/gpalettes.obj \
+	bin/gen/gattrs.obj \
 	bin/gen/gmaps.obj \
-	bin/palette.obj \
-	bin/flags.obj \
-	bin/oam.obj \
 	bin/engine/mem.obj \
 	bin/engine/rand.obj \
 	bin/engine/object.obj \
@@ -54,8 +55,12 @@ bin/gen/%: gen/%.c
 	$(MKDIR)
 	$(CC) -o $@ $< -MMD -MP $(CFLAGS)
 
-binjgb: $(CELESTE)
-	binjgb $< $(BINJGB_FLAGS)
-binjgb-debug: $(CELESTE)
-	binjgb-debugger $< -p $(BINJGB_FLAGS)
-.PHONY: binjgb binjgb-debug
+run-dmg: $(CELESTE)
+	binjgb $< $(DMG_FLAGS)
+debug-dmg: $(CELESTE)
+	binjgb-debugger $< $(DMG_FLAGS) $(DEBUG_FLAGS)
+run-cgb: $(CELESTE)
+	binjgb $< $(CGB_FLAGS)
+debug-cgb: $(CELESTE)
+	binjgb-debugger $< $(CGB_FLAGS) $(DEBUG_FLAGS)
+.PHONY: run-dmg debug-dmg run-cgb debug-cgb
