@@ -60,7 +60,7 @@ init_video::
     ldh [rBGP], a
     ldh [rOBP0], a
     ldh [rOBP1], a
-    jr .map
+    ret
 
 .cgb:
     ld hl, _VRAM
@@ -78,14 +78,6 @@ init_video::
     ld b, sizeof("game_obj_palettes")
     ld hl, startof("game_obj_palettes")
     call copy_palette
-
-.map:
-    xor a, a
-    call load_map
-    call show_map
-
-    ; ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
-    ; ldh [rLCDC], a
     ret
 
 

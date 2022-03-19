@@ -3,28 +3,51 @@ include "hardware.inc"
 section "map_rom", rom0
 
 
+; (pos: b, tile: c)
+load_tile::
+    ld h, high(map)
+    ld l, b
+    ld [hl], c
+    ld h, high(startof("game_attrs"))
+    ld l, c
+    ld a, [hl]
+    and a, $07
+    ld h, high(map_attr)
+    ld l, b
+    ld [hl], a
+    ret
+
+
+; (tile_pos: b) => bc
+tile2obj_position::
+    ; both rra operations assume C=0 from previous instruction
+    ld a, b
+    and a, $f0
+    rra
+    ld c, a
+    ld a, b
+    and a, $0f
+    swap a
+    rra
+    ld b, a
+    ret
+
+
 ; (map_id: a) => void
 load_map::
-    ; copy the map to memory
-    ld hl, map
+    ; load each tile
     add a, high(startof("game_maps"))
-    ld b, a
-    ld c, 0
-    ld de, $100
-    call memcpy
-
-    ; copy over the palettes from the flags
-    ld b, h
-    ld c, l
-    dec b
-    ld d, high(startof("game_attrs"))
+    ld h, a
+    ld l, $00
 .loop:
-    ld a, [bc]
-    ld e, a
-    ld a, [de]
-    and a, $07
-    ld [hl+], a
-    inc c
+    ld c, [hl]
+    ld b, l
+    push bc
+    push hl
+    call load_game_tile
+    pop hl
+    pop bc
+    inc l
     jr nz, .loop
     ret
 
@@ -44,6 +67,7 @@ copy_map:
 
 
 ; () => void
+; TODO: show map during H-blank in one frame
 show_map::
     ld bc, map
     call copy_map
@@ -56,6 +80,16 @@ show_map::
     call copy_map
     xor a, a
     ldh [rVBK], a
+    ret
+
+
+; () => void
+init_map::
+    xor a, a
+    call load_map
+    call show_map
+    ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
+    ldh [rLCDC], a
     ret
 
 

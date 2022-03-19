@@ -18,6 +18,8 @@ CELESTE_OBJ = \
 	bin/engine/map.obj \
 	bin/engine/video.obj \
 	bin/engine/engine.obj \
+	bin/player.obj \
+	bin/load.obj \
 	bin/main.obj
 
 LUA = bin/celeste.lua

@@ -107,6 +107,8 @@ alloc_object::
     inc l
     dec b
     jr nz, .loop
+    pop bc
+    pop hl
     ret
 
 .alloc:

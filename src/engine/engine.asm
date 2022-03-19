@@ -14,18 +14,7 @@ init_engine::
     call init_rand
     call init_video
     call init_objects
-
-    ld bc, $4444
-    ld d, $01
-    ld e, $00
-    ld hl, test_callback
-    push hl
-    call alloc_object
-    pop hl
-
-    ; TODO: put in function call
-    ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
-    ldh [rLCDC], a
+    call init_map
 
     ld a, IEF_VBLANK
     ldh [rIE], a
