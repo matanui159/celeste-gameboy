@@ -84,21 +84,24 @@ init_video::
     call load_map
     call show_map
 
-    ld a, LCDCF_BGON | LCDCF_BG8000 | LCDCF_ON
-    ldh [rLCDC], a
+    ; ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
+    ; ldh [rLCDC], a
     ret
 
 
 ; () => void
 int_vblank:
     push af
+    push bc
     ldh a, [video_state]
     cp a, 3
     set 0, a
     jr nz, .return
-    ; TODO
+    call copy_objects
+    xor a, a
 .return:
     ldh [video_state], a
+    pop bc
     pop af
     reti
 

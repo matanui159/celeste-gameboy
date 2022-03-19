@@ -1,9 +1,9 @@
 CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -isrc -Weverything
 LINK_FLAGS = -dt
-FIX_FLAGS = -vcj -t CELESTE -n 0x10
+FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
 DMG_FLAGS = --force-dmg -P 62 # BGB palette
-CGB_FLAGS = -C 1
+CGB_FLAGS = -C 1 # SameBoy palette
 DEBUG_FLAGS = -p
 
 CELESTE = bin/celeste.gb
@@ -15,8 +15,8 @@ CELESTE_OBJ = \
 	bin/engine/mem.obj \
 	bin/engine/rand.obj \
 	bin/engine/object.obj \
-	bin/engine/video.obj \
 	bin/engine/map.obj \
+	bin/engine/video.obj \
 	bin/engine/engine.obj \
 	bin/main.obj
 
