@@ -1,5 +1,8 @@
 include "hardware.inc"
 
+section "engine_rst00", rom0[$0000]
+    jp hl
+
 section "engine_rom", rom0
 
 
@@ -14,7 +17,7 @@ init_engine::
     call init_rand
     call init_video
     call init_objects
-    call init_map
+    call init_map_system
 
     ld a, IEF_VBLANK
     ldh [rIE], a

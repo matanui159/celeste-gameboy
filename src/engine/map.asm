@@ -3,13 +3,13 @@ include "hardware.inc"
 section "map_rom", rom0
 
 
-; (pos: b, tile: c)
-load_tile::
+; (pos: b, tile: d)
+init_tile::
     ld h, high(map)
     ld l, b
-    ld [hl], c
+    ld [hl], d
     ld h, high(startof("game_attrs"))
-    ld l, c
+    ld l, d
     ld a, [hl]
     and a, $07
     ld h, high(map_attr)
@@ -34,7 +34,7 @@ tile2obj_position::
 
 
 ; (map_id: a) => void
-load_map::
+init_map::
     ; load each tile
     add a, high(startof("game_maps"))
     ld h, a
@@ -42,11 +42,23 @@ load_map::
 .loop:
     ld c, [hl]
     ld b, l
-    push bc
+    ; get the init callback
     push hl
-    call load_game_tile
+    ld h, high(startof("game_callbacks"))
+    ld l, c
+    ld d, $00
+    ld e, [hl]
+    sla e
+    ld hl, init_callbacks
+    add hl, de
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+    ; call init
+    ld d, c
+    rst $00 ; call hl
+
     pop hl
-    pop bc
     inc l
     jr nz, .loop
     ret
@@ -86,9 +98,10 @@ show_map::
 
 
 ; () => void
-init_map::
+; TODO: we either need to get rid of this function or come up with a better name
+init_map_system::
     xor a, a
-    call load_map
+    call init_map
     call show_map
     ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a

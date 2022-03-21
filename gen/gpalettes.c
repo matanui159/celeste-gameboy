@@ -66,7 +66,7 @@ static void print_palettes(
 }
 
 int main(void) {
-    load_pico8();
+    read_pico8();
     print_palettes("game_bg_palettes", sizeof(bg_palettes), bg_palettes);
     print_palettes("game_obj_palettes", sizeof(obj_palettes), obj_palettes);
     return 0;

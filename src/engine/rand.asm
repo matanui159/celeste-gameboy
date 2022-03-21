@@ -20,14 +20,14 @@ rand::
     ld l, a
     ld h, b
     ; ac = ba << 7 (8 - 1)
-    ld c, 0
     srl b
     rra
+    ld c, 0
     rr c
     ; ba = hl ^ ac
     xor a, h
     ld b, a
-    ; _h = (hl ^ ac) >> 9 (8 + 1, used below)
+    ; _h = (hl ^ ac) >> 9 (8 + 1)
     rra
     ld h, a
     ld a, c

@@ -12,7 +12,7 @@
 
 static uint8_t pico8_data[0x8000];
 
-static void load_pico8(void) {
+static void read_pico8(void) {
     int width, height;
     uint8_t *image = stbi_load("gen/celeste.p8.png", &width, &height, NULL, 4);
     assert(image != NULL);

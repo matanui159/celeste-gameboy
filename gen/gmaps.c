@@ -1,7 +1,7 @@
 #include "gen.h"
 
 int main(void) {
-    load_pico8();
+    read_pico8();
     printf("section \"game_maps\", rom0, align[8]\n");
     for (size_t i = 0; i < 32; i += 1) {
         size_t map_x = i % 8;

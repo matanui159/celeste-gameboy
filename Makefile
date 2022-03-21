@@ -12,6 +12,7 @@ CELESTE_OBJ = \
 	bin/gen/gpalettes.obj \
 	bin/gen/gattrs.obj \
 	bin/gen/gmaps.obj \
+	bin/callbacks.obj \
 	bin/engine/mem.obj \
 	bin/engine/rand.obj \
 	bin/engine/object.obj \
@@ -19,7 +20,6 @@ CELESTE_OBJ = \
 	bin/engine/video.obj \
 	bin/engine/engine.obj \
 	bin/player.obj \
-	bin/load.obj \
 	bin/main.obj
 
 LUA = bin/celeste.lua

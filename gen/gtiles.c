@@ -37,7 +37,7 @@ static int get_dmg_index(const gen_palette_t *pal, uint8_t p8) {
 }
 
 int main(void) {
-    load_pico8();
+    read_pico8();
     print_tiles("game_dmg_tiles", get_dmg_index);
     print_tiles("game_cgb_tiles", get_cgb_index);
     return 0;
