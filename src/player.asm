@@ -3,6 +3,8 @@ section "player_rom", rom0
 
 ; (pos: bc, tile: d, attr: e) => void
 update_player:
+    inc b
+    dec c
     ret
 
 

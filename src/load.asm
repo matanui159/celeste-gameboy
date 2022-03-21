@@ -3,7 +3,6 @@ section "load_rom", rom0
 
 ; (pos: b, tile: c)
 load_game_tile::
-    ; jp load_tile
     push bc
     ; Setup return address
     ld hl, .return

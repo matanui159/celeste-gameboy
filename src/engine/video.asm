@@ -48,7 +48,7 @@ init_video::
     call memset
 
     ldh a, [engine_boot]
-    cp a, $11
+    cp a, BOOTUP_A_CGB
     jr z, .cgb
 
     ld hl, _VRAM
@@ -84,16 +84,16 @@ init_video::
 ; () => void
 int_vblank:
     push af
-    push bc
     ldh a, [video_state]
     cp a, 3
     set 0, a
     jr nz, .return
-    call copy_objects
+    push bc
+    call draw_objects
+    pop bc
     xor a, a
 .return:
     ldh [video_state], a
-    pop bc
     pop af
     reti
 

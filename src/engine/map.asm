@@ -69,10 +69,12 @@ copy_map:
 ; () => void
 ; TODO: show map during H-blank in one frame
 show_map::
+    ; TODO: not sure if this is a nice spot for it...
+    call draw_objects
     ld bc, map
     call copy_map
     ldh a, [engine_boot]
-    cp a, $11
+    cp a, BOOTUP_A_CGB
     ret nz
     ; CGB attributes
     ld a, 1

@@ -1,15 +1,11 @@
 include "hardware.inc"
-rsreset
-def OBJ_CALLBACK rw 1
-def OBJ_DATA     rw 1
-def sizeof_OBJ   rb 0
 
 section "object_rom", rom0
 
 
 ; () => void
 clear_objects::
-    ld hl, objects
+    ld hl, object_oam
     xor a, a
     ld b, OAM_COUNT
 .loop:
@@ -43,67 +39,124 @@ init_objects::
     jp memcpy
 
 
-; (id: a, pos: bc, tile: d, attr: e, data: hl) => void <callback_ptr: hl>
-save_object:
-    push hl
-    ld h, high(objects)
-    add a, a
-    add a, a
-    ld l, a
-
-    ; Y position
-    ld a, c
-    add a, $10
-    ld [hl+], a
-    
-    ; X position
-    ld a, b
-    add a, $08
-    ld [hl+], a
-
-    ; tile & attributes
-    ld a, d
-    ld [hl+], a
-    ld [hl], e
-
-    ; data
-    pop bc
-    ld h, high(object_data)
-    ld a, b
-    ld [hl-], a
-    ld a, c
-    ld [hl-], a
-    dec hl
-    ret
-
-
 ; () => void
 update_objects::
+    ld hl, object_oam
+    ld b, OAM_COUNT
+.loop:
+    ; we check the tile to see if it exists
+    inc l
+    inc l
+    ld a, [hl+]
+    cp a, $00
+    jr nz, .update
+.next:
+    inc l
+    dec b
+    jr nz, .loop
     ret
+
+.update:
+    push bc
+    push hl
+    ; push the return address so the callback returns here
+    ld bc, .return
+    push bc
+    ; load the data
+    ld h, high(object_data)
+    ld d, [hl]
+    dec l
+    ld e, [hl]
+    dec l
+    ; load the callback
+    ld b, [hl]
+    dec l
+    ld c, [hl]
+    ; push the callback so we can call it with a ret
+    push bc
+    ; push the data so we can pop it into hl later
+    push de
+    ; load the tile
+    ld d, a
+    ; load Y
+    ld h, high(object_oam)
+    ld a, [hl+]
+    sub a, OAM_Y_OFS
+    ld c, a
+    ; load X
+    ld a, [hl+]
+    sub a, OAM_X_OFS
+    ld b, a
+    ; skip the tile
+    inc l
+    ; load the attributes
+    ld e, [hl]    
+
+    ; call the callback
+    pop hl
+    ret
+
+.return:
+    ; push the data and get the original hl
+    push hl
+    ld hl, sp+2
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+    ; save the attributes
+    ld a, e
+    ld [hl-], a
+    ; save the tile
+    ld a, d
+    ld [hl-], a
+    ; save X
+    ld a, b
+    add a, OAM_X_OFS
+    ld [hl-], a
+    ; if tile=0, save Y=0 so it is off the screen
+    xor a, a
+    cp a, d
+    jr z, .save_y
+    ; otherwise, save Y with offset
+    ld a, c
+    add a, OAM_Y_OFS
+.save_y:
+    ld [hl+], a
+    ; save the data
+    pop bc
+    ld h, high(object_data)
+    inc l
+    ld a, c
+    ld [hl+], a
+    ld [hl], b
+
+    pop hl
+    pop bc
+    jr .next
 
 
 ; () => void
-copy_objects::
-    ld a, high(objects)
+draw_objects::
+    ld a, high(object_oam)
     ld b, 40
     ld c, low(rDMA)
     jp copy_oam
 
 
 ; callback: (pos: bc, tile: d, attr: e, data: hl) => { pos: bc, tile: d, attr: e, data: hl }
-; (pos: bc, tile: d, attr: e, data: hl, callback: stack) => a
+; (pos: bc, tile: d, attr: e, data: hl, callback: stack) => void
 alloc_object::
-    ; We use the tile to detect if an object exists
     push hl
-    ld hl, objects + 2
     push bc
+    ld hl, object_oam
     ld b, OAM_COUNT
 .loop:
+    ; we check the tile to see if it exists
+    inc l
+    inc l
     ld a, [hl+]
-    cp a, 0
+    cp a, $00
     jr z, .alloc
-    inc l
-    inc l
     inc l
     dec b
     jr nz, .loop
@@ -112,42 +165,39 @@ alloc_object::
     ret
 
 .alloc:
-    ld a, OAM_COUNT
-    sub a, b
-    pop bc
-    pop hl
-    push af
-    call save_object
-
-    ; Stack right now is tild_id, return, callback. We need the callback
-    ld b, h
-    ld c, l
-    ld hl, sp+4
+    ld bc, .return
+    push bc
+    ld b, $01
+    push bc
+    push hl
+    ld hl, sp+6
     ld a, [hl+]
-    ld [bc], a
-    inc bc
+    ld c, a
     ld a, [hl+]
-    ld [bc], a
-    pop af
-    ret
-
-
-; (id: a) => void
-free_object::
-    ; We have tp clear both the tile and the Y position (off the screen)
-    ld h, high(objects)
-    add a, a
-    add a, a
+    ld b, a
+    ld a, [hl+]
+    ld h, [hl]
     ld l, a
-    xor a, a
-    ld [hl+], a
+    jp update_objects.return
+
+.return:
+    add sp, 4
+    ld a, l
+    sub a, 4
+    ld hl, sp+2
+    ld c, [hl]
     inc l
-    ld [hl], a
+    ld b, [hl]
+    ld h, high(object_data)
+    ld l, a
+    ld a, c
+    ld [hl+], a
+    ld [hl], b
     ret
 
 
 section "object_oam", wram0, align[8]
-objects: ds OAM_COUNT * sizeof_OAM_ATTRS
+object_oam: ds OAM_COUNT * sizeof_OAM_ATTRS
 
 section "object_data", wram0, align[8]
 object_data: ds OAM_COUNT * sizeof_OAM_ATTRS
