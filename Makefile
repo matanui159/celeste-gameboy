@@ -1,5 +1,5 @@
 CFLAGS = -Wall -Wextra -Wpedantic
-ASM_FLAGS = -isrc -Weverything
+ASM_FLAGS = -Weverything
 LINK_FLAGS = -dt
 FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
 DMG_FLAGS = --force-dmg -P 62 # BGB palette
@@ -15,6 +15,7 @@ CELESTE_OBJ = \
 	bin/callbacks.obj \
 	bin/engine/mem.obj \
 	bin/engine/rand.obj \
+	bin/engine/input.obj \
 	bin/engine/object.obj \
 	bin/engine/map.obj \
 	bin/engine/video.obj \
@@ -37,7 +38,7 @@ $(CELESTE): $(CELESTE_OBJ)
 	rgblink -o $@ $^ -m $(@:.gb=.map) $(LINK_FLAGS)
 	rgbfix $@ $(FIX_FLAGS)
 
-RGBASM = rgbasm -o $@ $< -M $(@:.obj=.mak) -MP $(ASM_FLAGS)
+RGBASM = rgbasm -o $@ $< -i $(dir $<) -M $(@:.obj=.mak) -MP $(ASM_FLAGS)
 bin/%.obj: src/%.asm
 	$(MKDIR)
 	$(RGBASM)

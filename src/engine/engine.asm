@@ -1,4 +1,4 @@
-include "hardware.inc"
+include "../hardware.inc"
 
 section "engine_rst00", rom0[$0000]
     jp hl
@@ -15,6 +15,7 @@ init_engine::
     ldh [engine_boot], a
     di
     call init_rand
+    call init_input
     call init_video
     call init_objects
     call init_map_system
@@ -31,6 +32,7 @@ init_engine::
 run_engine::
     ; add more entropy to the randomiser
     call rand
+    call update_input
     call update_objects
     call draw_video
     jr run_engine

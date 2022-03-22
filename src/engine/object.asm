@@ -1,4 +1,4 @@
-include "hardware.inc"
+include "../hardware.inc"
 
 section "object_rom", rom0
 

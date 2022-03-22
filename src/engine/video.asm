@@ -1,4 +1,4 @@
-include "hardware.inc"
+include "../hardware.inc"
 
 section "video_vblank", rom0[$0040]
     nop
