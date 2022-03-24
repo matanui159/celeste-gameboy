@@ -7,6 +7,7 @@ section "video_vblank", rom0[$0040]
 section "video_rom", rom0
 
 
+; TODO: maybe this should be a macro?
 ; (dst: a, size: b, reg: c, src: hl) => void <next_reg: c>
 copy_palette:
     set 7, a

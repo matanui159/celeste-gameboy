@@ -20,6 +20,7 @@ CELESTE_OBJ = \
 	bin/engine/map.obj \
 	bin/engine/video.obj \
 	bin/engine/engine.obj \
+	bin/physics.obj \
 	bin/player.obj \
 	bin/main.obj
 

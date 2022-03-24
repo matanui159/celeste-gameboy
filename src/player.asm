@@ -5,24 +5,34 @@ section "player_rom", rom0
 
 ; (pos: bc, tile: d, attr: e) => void
 update_player::
-    ldh a, [input]
-    bit INB_RIGHT, a
-    jr z, .noright
-    inc b
-    inc b
-.noright:
-    bit INB_LEFT, a
-    jr z, .noleft
-    dec b
-    dec b
-.noleft:
-    ldh a, [next_input]
-    bit INB_UP, a
-    jr z, .noup
-    ld a, c
-    sub a, 8
+    ; move acceleration
+    push bc
+    ld hl, spd_x
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+    ld bc, $100
+    ld de, 153
+    call accel
+    ld bc, spd_x
+    ld a, l
+    ld [bc], a
+    inc c
+    ld a, h
+    ld [bc], a
+    ; move speed
+    pop bc
+    ld d, c
+    ldh a, [rem_x]
     ld c, a
-.noup:
+    add hl, bc
+    ld b, h
+    ld a, l
+    ldh [rem_x], a
+    ld c, d
+    ; animation
+    ld d, $01
+    ld e, $00
     ret
 
 
@@ -34,4 +44,18 @@ init_player::
     call alloc_object
     pop bc
     ld d, $00
-    jp init_tile
+    call init_tile
+    ; reset memory
+    xor a, a
+    ld hl, spd_x
+    ld [hl+], a
+    ld [hl+], a
+    ldh [rem_x], a
+    ret
+
+
+section "player_wram", wram0, align[1]
+spd_x: dw
+
+section "player_hram", hram
+rem_x: db
