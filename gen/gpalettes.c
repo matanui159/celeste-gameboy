@@ -41,28 +41,26 @@ static uint8_t get_cgb_index(uint8_t shade) {
 }
 
 static void print_palettes(
-    const char *section,
+    const char *name,
     size_t pal_size,
     const gen_palette_t *palettes
 ) {
-    printf("section \"%s\", rom0\n", section);
+    printf("const unsigned short %s[] = {\n", name);
     size_t pal_count = pal_size / sizeof(gen_palette_t);
     for (size_t p = 0; p < pal_count; p += 1) {
         const gen_palette_t *pal = &palettes[p];
-        printf("dw ");
+        printf("   ");
         for (size_t c = 0; c < 4; c += 1) {
-            if (c > 0) {
-                printf(",");
-            }
             uint32_t color = pico8_colors[pal->cgb_colors[c]];
             uint8_t r = get_cgb_index((color >> 16) & 0xff);
             uint8_t g = get_cgb_index((color >>  8) & 0xff);
             uint8_t b = get_cgb_index((color >>  0) & 0xff);
             uint16_t cgb = (r << 0) | (g << 5) | (b << 10);
-            printf("$%04x", cgb);
+            printf(" 0x%04x,", cgb);
         }
         printf("\n");
     }
+    printf("};\n");
 }
 
 int main(void) {

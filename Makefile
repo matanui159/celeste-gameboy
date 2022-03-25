@@ -1,28 +1,29 @@
-CFLAGS = -Wall -Wextra -Wpedantic
-ASM_FLAGS = -Weverything
-LINK_FLAGS = -dt
-FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
+CC = sdcc
+CFLAGS = -msm83 --std-sdcc99 --opt-code-speed
+LDFLAGS = -msm83 --no-std-crt0 --code-loc 0x150
+AS = sdasgb
+ASFLAGS = -og
+BIN = makebin
+BIN_FLAGS = -Z -yn CELESTE -yc -yj
+
+GEN_CC = cc
+GEN_CFLAGS = -Wall -Wextra -Wpedantic
+GEN_LDFLAGS =
+
 DMG_FLAGS = --force-dmg -P 62 # BGB palette
 CGB_FLAGS = -C 1 # SameBoy palette
 DEBUG_FLAGS = -p
 
 CELESTE = bin/celeste.gb
-CELESTE_OBJ = \
-	bin/gen/gtiles.obj \
-	bin/gen/gpalettes.obj \
-	bin/gen/gattrs.obj \
-	bin/gen/gmaps.obj \
-	bin/callbacks.obj \
-	bin/engine/mem.obj \
-	bin/engine/rand.obj \
-	bin/engine/input.obj \
-	bin/engine/object.obj \
-	bin/engine/map.obj \
-	bin/engine/video.obj \
-	bin/engine/engine.obj \
-	bin/physics.obj \
-	bin/player.obj \
-	bin/main.obj
+CELESTE_IHX = $(CELESTE:.gb=.ihx)
+CELESTE_REL = \
+	bin/crt0.rel \
+	bin/gen/gtiles.rel \
+	bin/gen/gpalettes.rel \
+	bin/engine/engine.rel \
+	bin/engine/video.rel \
+	bin/engine/palcpy.rel \
+	bin/main.rel
 
 LUA = bin/celeste.lua
 LUA_GEN = bin/gen/glua
@@ -31,33 +32,37 @@ all: $(CELESTE) $(LUA)
 clean:
 	rm -r bin
 .PHONY: all clean
--include $(CELESTE_OBJ:.obj=.mak) $(CELESTE_OBJ:.obj=.d) $(LUA_GEN:=.d)
+-include $(CELESTE_REL:.rel=.mak) $(CELESTE_REL:.rel=.d) $(LUA_GEN:=.d)
 
 MKDIR = mkdir -p $(dir $@)
-$(CELESTE): $(CELESTE_OBJ)
+$(CELESTE): $(CELESTE_IHX)
+	$(BIN) $(BIN_FLAGS) $< $@
+$(CELESTE_IHX): $(CELESTE_REL)
 	$(MKDIR)
-	rgblink -o $@ $^ -m $(@:.gb=.map) $(LINK_FLAGS)
-	rgbfix $@ $(FIX_FLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
-RGBASM = rgbasm -o $@ $< -i $(dir $<) -M $(@:.obj=.mak) -MP $(ASM_FLAGS)
-bin/%.obj: src/%.asm
+COMPILE = $(CC) -o $@ -c $< -Wp -MMD,$(@:.rel=.mak),-MT,$@,-MP $(CFLAGS)
+bin/%.rel: src/%.c
 	$(MKDIR)
-	$(RGBASM)
-bin/%.obj: bin/%.asm
+	$(COMPILE)
+bin/%.rel: bin/%.c
 	$(MKDIR)
-	$(RGBASM)
+	$(COMPILE)
+
+bin/%.rel: src/%.s
+	$(MKDIR)
+	$(AS) $(ASFLAGS) $@ $<
 
 GEN = $< > $@
-bin/gen/%.asm: bin/gen/% gen/celeste.p8.png
+bin/gen/%.c: bin/gen/% gen/celeste.p8.png
 	$(MKDIR)
 	$(GEN)
 $(LUA): $(LUA_GEN)
 	$(MKDIR)
 	$(GEN)
-
 bin/gen/%: gen/%.c
 	$(MKDIR)
-	$(CC) -o $@ $< -MMD -MP $(CFLAGS)
+	$(GEN_CC) -o $@ $< -MMD -MP $(GEN_CFLAGS) $(GEN_LDFLAGS)
 
 run-dmg: $(CELESTE)
 	binjgb $< $(DMG_FLAGS)
