@@ -2,7 +2,7 @@
 
 int main(void) {
     read_pico8();
-    printf("section \"game_maps\", rom0, align[8]\n");
+    printf("const unsigned char game_maps[] = {\n");
     for (size_t i = 0; i < 32; i += 1) {
         size_t map_x = i % 8;
         size_t map_y = i / 8;
@@ -10,17 +10,15 @@ int main(void) {
         if (map_y < 2) {
             data += 0x2000;
         }
-        printf("db ");
+        printf("   ");
         for (size_t y = 0; y < 16; y += 1) {
             for (size_t x = 0; x < 16; x += 1) {
-                if (x > 0 || y > 0) {
-                    printf(",");
-                }
-                printf("$%02x", data[x]);
+                printf(" 0x%02x,", data[x]);
             }
             data += 128;
         }
         printf("\n");
     }
+    printf("};\n");
     return 0;
 }

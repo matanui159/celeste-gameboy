@@ -3,6 +3,7 @@
 #include "compat.h"
 
 void palcpy(ubyte reg, ubyte dst, const uint *src, ubyte size);
+void video_wait(void);
 void video_init(void);
 
 #endif

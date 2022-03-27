@@ -19,10 +19,14 @@ CELESTE_IHX = $(CELESTE:.gb=.ihx)
 CELESTE_REL = \
 	bin/crt0.rel \
 	bin/gen/gtiles.rel \
+	bin/gen/gattrs.rel \
 	bin/gen/gpalettes.rel \
+	bin/gen/gmaps.rel \
 	bin/engine/engine.rel \
 	bin/engine/video.rel \
 	bin/engine/palcpy.rel \
+	bin/engine/map.rel \
+	bin/engine/map_hblank.rel \
 	bin/main.rel
 
 LUA = bin/celeste.lua

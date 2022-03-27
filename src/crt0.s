@@ -2,6 +2,8 @@
     .org 0x38
 _exit::
     jr _exit
+    .org 0x40
+    jp __int_vblank
     .org 0x100
     jp __entry
 

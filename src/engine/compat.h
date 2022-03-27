@@ -10,11 +10,13 @@ typedef unsigned short uint;
 #ifdef __SDCC
 typedef __sfr hbyte;
 #define ADDR(addr) __at(addr)
-#define INTERRUPT __interrupt __critical
+#define CRITICAL __critical
+#define INTERRUPT CRITICAL __interrupt
 #else
 typedef ubyte hbyte;
 #define ADDR(addr)
-#define INTERRUPT
+#define CRITICAL
+#define INTERRUPT CRITICAL
 #endif
 
 #endif

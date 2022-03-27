@@ -1,5 +1,5 @@
     .area _CODE
-; void palcpy(ubyte reg, ubyte dst, const uint *src, ubyte size);
+; void palcpy(ubyte reg, ubyte dst, const uint *src, ubyte size)
 _palcpy::
     ; *(reg++) = dst | CGB_PALETTE_INC
     ld c, a
@@ -10,23 +10,22 @@ _palcpy::
     ; const uint *src, ubyte size
     ldhl sp, #4
     ld a, (hl-)
-    or a, a
-    jr z, 1$
     ld b, a
     ld a, (hl-)
     ld l, (hl)
     ld h, a
     ; for (; size != 0; size -= 1)
+    inc b
+    jr 1$
 0$:
     ; *reg = *(src++)
     ld a, (hl+)
     ldh (c), a
-    ld a, (hl+)
-    ldh (c), a
-    ; for (; size != 0; size -= 1)
+1$:
+    ; continue
     dec b
     jr nz, 0$
-1$:
+    ; return
     pop hl
     add sp, #3
     jp (hl)

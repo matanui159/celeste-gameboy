@@ -4,7 +4,7 @@ static void print_tiles(
     const char *name,
     uint8_t get_index(const gen_palette_t *pal, uint8_t p8)
 ) {
-    printf("const unsigned char %s[] = {\n", name);
+    printf("const unsigned short %s[] = {\n", name);
     for (size_t i = 0; i < 128; i += 1) {
         const gen_palette_t *pal = tile_palettes[i];
         size_t tile_x = i % 16;
@@ -22,7 +22,7 @@ static void print_tiles(
                 lo = (lo << 1) | (index & 0x1);
                 hi = (hi << 1) | (index >> 1);
             }
-            printf(" 0x%02x, 0x%02x,", lo, hi);
+            printf(" 0x%02x%02x,", hi, lo);
             data += 64;
         }
         printf("\n");
