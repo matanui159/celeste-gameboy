@@ -1,4 +1,7 @@
-section "main_entry", rom0[$0100]
+include "reg.inc"
+include "util.inc"
+
+section "header_rom", rom0[$0100]
     nop
     jp main
     ds $4c
@@ -8,11 +11,30 @@ section "main_rom", rom0
 
 ; () => void
 main:
-    ld sp, main_stack
-    call init_engine
-    call run_engine
+    di
+    ; reset memory
+    xor a, a
+    ld hl, $c000
+    ld b, a
+.clear:
+rept $20
+    ld [hl+], a
+endr
+    dec b
+    jr nz, .clear
+    ; setup stack
+    ld sp, $e000
 
+    call video_init
+    call map_init
+    call objects_init
 
-section "main_wram", wram0
-    ds $100
-main_stack:
+    LDA [REG_LCDC], LCDC_BG_DATA0 | LCDC_OBJ_ON | LCDC_ON
+    LDA [REG_IE], INT_VBLANK
+    LDZ [REG_IF]
+    ei
+
+.loop:
+    call player_update
+    call video_draw
+    jr .loop

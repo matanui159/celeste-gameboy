@@ -1,9 +1,8 @@
 CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -Weverything
-LINK_FLAGS = -dt
-FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
-DMG_FLAGS = --force-dmg -P 62 # BGB palette
-CGB_FLAGS = -C 1 # SameBoy palette
+LINK_FLAGS = -w
+FIX_FLAGS = -vCj -t CELESTE -n 0x10 # ver. 1.0
+BINJGB_FLAGS = -C 1
 DEBUG_FLAGS = -p
 
 CELESTE = bin/celeste.gb
@@ -12,17 +11,11 @@ CELESTE_OBJ = \
 	bin/gen/gpalettes.obj \
 	bin/gen/gattrs.obj \
 	bin/gen/gmaps.obj \
-	bin/callbacks.obj \
-	bin/engine/mem.obj \
-	bin/engine/rand.obj \
-	bin/engine/input.obj \
-	bin/engine/object.obj \
-	bin/engine/map.obj \
-	bin/engine/video.obj \
-	bin/engine/engine.obj \
-	bin/physics.obj \
-	bin/player.obj \
-	bin/main.obj
+	bin/src/main.obj \
+	bin/src/video.obj \
+	bin/src/map.obj \
+	bin/src/object.obj \
+	bin/src/player.obj
 
 LUA = bin/celeste.lua
 LUA_GEN = bin/gen/glua
@@ -40,7 +33,7 @@ $(CELESTE): $(CELESTE_OBJ)
 	rgbfix $@ $(FIX_FLAGS)
 
 RGBASM = rgbasm -o $@ $< -i $(dir $<) -M $(@:.obj=.mak) -MP $(ASM_FLAGS)
-bin/%.obj: src/%.asm
+bin/%.obj: %.asm
 	$(MKDIR)
 	$(RGBASM)
 bin/%.obj: bin/%.asm
@@ -54,17 +47,12 @@ bin/gen/%.asm: bin/gen/% gen/celeste.p8.png
 $(LUA): $(LUA_GEN)
 	$(MKDIR)
 	$(GEN)
-
 bin/gen/%: gen/%.c
 	$(MKDIR)
 	$(CC) -o $@ $< -MMD -MP $(CFLAGS)
 
-run-dmg: $(CELESTE)
-	binjgb $< $(DMG_FLAGS)
-debug-dmg: $(CELESTE)
-	binjgb-debugger $< $(DMG_FLAGS) $(DEBUG_FLAGS)
-run-cgb: $(CELESTE)
-	binjgb $< $(CGB_FLAGS)
-debug-cgb: $(CELESTE)
-	binjgb-debugger $< $(CGB_FLAGS) $(DEBUG_FLAGS)
-.PHONY: run-dmg debug-dmg run-cgb debug-cgb
+binjgb: $(CELESTE)
+	binjgb $< $(BINJGB_FLAGS)
+binjgb-debug: $(CELESTE)
+	binjgb-debugger -p $< $(BINJGB_FLAGS)
+.PHONY: binjgb binjgb-debug

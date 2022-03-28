@@ -1,6 +1,6 @@
 #include "gen.h"
 
-static const uint32_t pico8_colors[] = {
+static const uint32_t palette_colors[] = {
     0x000000,
     0x1d2b53,
     0x7e2553,
@@ -20,54 +20,56 @@ static const uint32_t pico8_colors[] = {
 };
 
 // Copied from Sameboy
-static const uint8_t cgb_shades[] = {
+static const uint8_t palette_shades[] = {
       0,   6,  12,  20,  28,  36,  45,  56,
      66,  76,  88, 100, 113, 125, 137, 149,
     161, 172, 182, 192, 202, 210, 218, 225,
     232, 238, 243, 247, 250, 252, 254, 255
 };
 
-static uint8_t get_cgb_index(uint8_t shade) {
-    uint8_t index;
+static uint8_t palette_get_color(uint8_t shade) {
+    uint8_t color;
     int dist = -1;
-    for (size_t i = 0; i < sizeof(cgb_shades); i += 1) {
-        uint8_t new_dist = MATH_ABS(cgb_shades[i] - shade);
+    for (size_t i = 0; i < sizeof(palette_shades); i += 1) {
+        uint8_t new_dist = GEN_ABS(palette_shades[i] - shade);
         if (dist < 0 || new_dist < dist) {
-            index = i;
+            color = i;
             dist = new_dist;
         }
     }
-    return index;
+    return color;
 }
 
-static void print_palettes(
-    const char *section,
+static void palettes_gen(
+    const char *label,
     size_t pal_size,
     const gen_palette_t *palettes
 ) {
-    printf("section \"%s\", rom0\n", section);
+    printf("%s::\n", label);
     size_t pal_count = pal_size / sizeof(gen_palette_t);
     for (size_t p = 0; p < pal_count; p += 1) {
         const gen_palette_t *pal = &palettes[p];
-        printf("dw ");
+        printf("    dw ");
         for (size_t c = 0; c < 4; c += 1) {
             if (c > 0) {
-                printf(",");
+                printf(", ");
             }
-            uint32_t color = pico8_colors[pal->cgb_colors[c]];
-            uint8_t r = get_cgb_index((color >> 16) & 0xff);
-            uint8_t g = get_cgb_index((color >>  8) & 0xff);
-            uint8_t b = get_cgb_index((color >>  0) & 0xff);
+            uint32_t pico8 = palette_colors[pal->colors[c]];
+            uint8_t r = palette_get_color((pico8 >> 16) & 0xff);
+            uint8_t g = palette_get_color((pico8 >>  8) & 0xff);
+            uint8_t b = palette_get_color((pico8 >>  0) & 0xff);
             uint16_t cgb = (r << 0) | (g << 5) | (b << 10);
             printf("$%04x", cgb);
         }
         printf("\n");
     }
+    printf(".end::\n");
 }
 
 int main(void) {
-    read_pico8();
-    print_palettes("game_bg_palettes", sizeof(bg_palettes), bg_palettes);
-    print_palettes("game_obj_palettes", sizeof(obj_palettes), obj_palettes);
+    gen_load();
+    printf("section \"gpalettes_rom\", romx, bank[1]\n");
+    palettes_gen("gen_bg_palettes", sizeof(gen_bg_palettes), gen_bg_palettes);
+    palettes_gen("gen_obj_palettes", sizeof(gen_obj_palettes), gen_obj_palettes);
     return 0;
 }

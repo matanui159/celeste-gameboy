@@ -10,8 +10,8 @@ static char *slide_window(size_t size) {
 }
 
 int main(void) {
-    read_pico8();
-    uint8_t *data = &pico8_data[0x4300];
+    gen_load();
+    uint8_t *data = &gen_data[0x4300];
     int size = (data[4] << 8) | data[5];
     data += 8;
     while (size > 0) {
