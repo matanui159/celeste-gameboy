@@ -31,6 +31,18 @@ def OAM_ATTR_FLIP_X  equ $20
 def OAM_ATTR_FLIP_Y  equ $40
 def OAM_ATTR_NO_PRIO equ $80
 
+def REG_JOYP equ $ff00
+def JOYP_RIGHT  equ $01
+def JOYP_A      equ $01
+def JOYP_LEFT   equ $02
+def JOYP_B      equ $02
+def JOYP_UP     equ $04
+def JOYP_SELECT equ $04
+def JOYP_DOWN   equ $08
+def JOYP_START  equ $08
+def JOYP_NO_DIR equ $10
+def JOYP_NO_ACT equ $20
+
 def REG_IF equ $ff0f
 def REG_IE equ $ffff
 def INT_VBLANK equ $01

@@ -35,6 +35,7 @@ endr
     ei
 
 .loop:
+    call input_update
     call player_update
     call video_draw
     jr .loop

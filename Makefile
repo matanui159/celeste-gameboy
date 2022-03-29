@@ -15,6 +15,8 @@ CELESTE_OBJ = \
 	bin/src/video.obj \
 	bin/src/map.obj \
 	bin/src/object.obj \
+	bin/src/input.obj \
+	bin/src/physics.obj \
 	bin/src/player.obj
 
 LUA = bin/celeste.lua

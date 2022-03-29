@@ -49,6 +49,7 @@ video_init::
 
 ; () => void
 video_draw::
+    ; TODO: wait for second v-blank before updating so input is more up-to-date
     ld hl, video_state
     set 1, [hl]
 .loop:
