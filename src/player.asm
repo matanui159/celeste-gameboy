@@ -39,22 +39,15 @@ player_update::
 
 .deccel:
     ld de, 0.15 >>8
-    JRP16 hl, .move
+    JRP8 h, .move
     NEG16 bc
 
 .move:
     call physics_accel
     ST16 spd_x, hl
 
-    ; speed X
-    MV8 b, [object_player + OAM_X]
-    MV8 c, [rem_x]
-    add hl, bc
-    MV8 [object_player + OAM_X], h
-    MV8 [rem_x], l
-    ret
+    jp physics_move
 
 
 section "player_wram", wram0
 spd_x: dw
-rem_x: db

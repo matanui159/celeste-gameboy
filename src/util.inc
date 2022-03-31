@@ -17,6 +17,20 @@ macro MV0
 endm
 
 
+; (acc: r8, label: 16) => void
+macro JRN8
+    bit 7, \1
+    jr nz, \2
+endm
+
+
+; (acc: r8, label: 16) => void
+macro JRP8
+    bit 7, \1
+    jr z, \2
+endm
+
+
 ; (dst: r16, src: r16) => void
 macro MV16
     ld low(\1), low(\2)
@@ -51,7 +65,7 @@ endm
 
 ; (acc: r16) => void
 macro NEG16
-    ld a, 0
+    xor a, a
     sub a, low(\1)
     ld low(\1), a
     ld a, 0
@@ -60,23 +74,9 @@ macro NEG16
 endm
 
 
-; (acc: r16, label: 16) => void
-macro JRN16
-    bit 7, high(\1)
-    jr nz, \2
-endm
-
-
-; (acc: r16, label: 16) => void
-macro JRP16
-    bit 7, high(\1)
-    jr z, \2
-endm
-
-
 ; (acc: r16) => void
 macro ABS16
-    JRP16 \1, .cont\@
+    JRP8 high(\1), .cont\@
     NEG16 \1
 .cont\@:
 endm

@@ -1,3 +1,4 @@
+include "reg.inc"
 include "util.inc"
 
 section "physics_rom", rom0
@@ -18,3 +19,41 @@ physics_accel::
 .equal:
     MV16 hl, bc
     ret
+
+
+; (amount: a) => void
+move_x:
+    ld hl, object_player + OAM_X
+    ld d, [hl]
+.loop:
+    JRN8 a, .neg
+    inc d
+    dec a
+    jr nz, .loop
+    jr .return
+.neg:
+    dec d
+    inc a
+    jr nz, .loop
+.return:
+    ld [hl], d
+    ret
+
+
+; (spd_x: hl) => void
+physics_move::
+    ; -- [x] get move amount
+    ld bc, rem_x
+    ld d, 0
+    MV8 e, [bc]
+    add hl, de
+    MV8 [bc], l
+
+    ld a, h
+    cp a, d
+    call nz, move_x
+    ret
+
+
+section "physics_wram", wram0
+rem_x: db
