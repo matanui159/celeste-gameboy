@@ -13,7 +13,7 @@ video_palcpy::
     ld [c], a
     inc c
 .loop:
-    LDA [c], [hl+]
+    MV8 [c], [hl+]
     dec b
     jr nz, .loop
     inc c
@@ -26,13 +26,13 @@ video_init::
     ld a, [c]
     bit 7, a ; LCDC_ON
     jr z, .off
-    LDA [REG_IE], INT_VBLANK
-    LDZ [REG_IF]
+    MV8 [REG_IE], INT_VBLANK
+    MV0 [REG_IF]
     halt
     ld [c], a
 .off:
 
-    LDZ [video_state]
+    MV0 [video_state]
     HDMA MEM_TILE_DATA0, gen_tiles, gen_tiles.end - gen_tiles
 
     ld c, low(REG_BGPI)

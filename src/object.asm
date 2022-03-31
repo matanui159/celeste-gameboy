@@ -8,7 +8,7 @@ section "object_rom", rom0
 objects_draw_rom:
 load "object_hram", hram
 objects_draw::
-    LDA [REG_DMA], high(object_smoke)
+    MV8 [REG_DMA], high(object_smoke)
     ld a, $40
 .loop:
     dec a
@@ -24,7 +24,7 @@ objects_init::
     ld hl, objects_draw_rom
     ld b, objects_draw.end - objects_draw
 .loop:
-    LDA [c], [hl+]
+    MV8 [c], [hl+]
     inc c
     dec b
     jr nz, .loop

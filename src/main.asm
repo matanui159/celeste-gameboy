@@ -29,9 +29,9 @@ endr
     call map_init
     call objects_init
 
-    LDA [REG_LCDC], LCDC_BG_DATA0 | LCDC_OBJ_ON | LCDC_ON
-    LDA [REG_IE], INT_VBLANK
-    LDZ [REG_IF]
+    MV8 [REG_LCDC], LCDC_BG_DATA0 | LCDC_OBJ_ON | LCDC_ON
+    MV8 [REG_IE], INT_VBLANK
+    MV0 [REG_IF]
     ei
 
 .loop:

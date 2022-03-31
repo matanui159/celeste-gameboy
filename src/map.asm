@@ -11,7 +11,7 @@ section "map_rom", rom0
 ; (pos: l) => bc
 tile_get_pos::
     ; X
-    LDA d, [REG_SCX]
+    MV8 d, [REG_SCX]
     ld a, l
     and a, $0f
     swap a
@@ -20,7 +20,7 @@ tile_get_pos::
     add a, OAM_X_OFFSET
     ld b, a
     ; Y
-    LDA d, [REG_SCY]
+    MV8 d, [REG_SCY]
     ld a, l
     and a, $f0
     rra
@@ -98,23 +98,23 @@ map_load::
 map_draw::
     HDMA MEM_TILE_MAP0, map_tiles, MAP_SIZE
     ld c, low(REG_VBK)
-    LDA [c], $01
+    MV8 [c], $01
     HDMA MEM_TILE_MAP0, map_attrs, MAP_SIZE
-    LDZ [c]
+    MV0 [c]
     ret
 
 
 ; () => void
 map_init::
     ; setup scroll registers
-    LDA [REG_SCX], -16
-    LDA [REG_SCY], -8
+    MV8 [REG_SCX], -16
+    MV8 [REG_SCY], -8
 
     ; while the map is clear, use it to clear the bottom half of the map
     HDMA MEM_TILE_MAP0 + MAP_SIZE, map_tiles, MAP_SIZE
-    LDA [c], $01
+    MV8 [c], $01
     HDMA MEM_TILE_MAP0 + MAP_SIZE, map_attrs, MAP_SIZE
-    LDZ [c]
+    MV0 [c]
 
     ; load and draw the first map
     call map_load

@@ -4,39 +4,37 @@ include "reg.inc"
 
 
 ; (dst: 8, src: 8) => void
-macro LDA
+macro MV8
     ld a, \2
     ld \1, a
 endm
 
 
 ; (dst: 8) => void
-macro LDZ
+macro MV0
     xor a, a
     ld \1, a
 endm
 
 
 ; (dst: r16, src: r16) => void
-macro LD16
+macro MV16
     ld low(\1), low(\2)
     ld high(\1), high(\2)
 endm
 
 
 ; (dst: r16, addr: n16) => void
-macro LDW
-    ld hl, \2
-    ld a, [hl+]
-    ld high(\1), [hl]
-    ld low(\1), a
+macro LD16
+    MV8 low(\1), [\2]
+    MV8 high(\1), [(\2) + 1]
 endm
 
 
 ; (addr: n16, src: 16) => void
-macro STW
-    LDA [\1], low(\2)
-    LDA [(\1) + 1], high(\2)
+macro ST16
+    MV8 [\1], low(\2)
+    MV8 [(\1) + 1], high(\2)
 endm
 
 
@@ -116,11 +114,11 @@ assert (\2) & $f == $0
 assert (\3) & $f == $0
 assert (\3) > 0 && (\3) <= $800
     ld hl, REG_HDMA_HISRC
-    LDA [hl+], high(\2)
-    LDA [hl+], low(\2)
-    LDA [hl+], high(\1)
-    LDA [hl+], low(\1)
-    LDA [hl+], ((\3) >> 4) - 1
+    MV8 [hl+], high(\2)
+    MV8 [hl+], low(\2)
+    MV8 [hl+], high(\1)
+    MV8 [hl+], low(\1)
+    MV8 [hl+], ((\3) >> 4) - 1
 endm
 
 

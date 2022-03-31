@@ -3,7 +3,7 @@ include "util.inc"
 
 ; (joyp: 8) => a
 macro INPUT_HALF
-    LDA [c], \1
+    MV8 [c], \1
 rept 4
     ld a, [c]
 endr
