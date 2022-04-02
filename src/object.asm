@@ -28,9 +28,7 @@ objects_init::
     inc c
     dec b
     jr nz, .loop
-
-    ; use DMA now to clear OAM
-    jp objects_draw
+    ret
 
 
 section "object_wram", wram0, align[8]

@@ -2,7 +2,6 @@ include "reg.inc"
 include "util.inc"
 
 section "video_vblank", rom0[$0040]
-    nop
     jp video_vblank
 
 section "video_rom", rom0
@@ -34,6 +33,7 @@ video_init::
 
     MV0 [video_state]
     HDMA MEM_TILE_DATA0, gen_tiles, gen_tiles.end - gen_tiles
+    HDMA MEM_TILE_DATA1, tiles_extra, tiles_extra.end - tiles_extra
 
     ld c, low(REG_BGPI)
     ld a, $00 | PI_INC
@@ -57,6 +57,8 @@ video_draw::
     ld a, [video_state]
     or a, a
     jr nz, .loop
+    ; we reset the timer so we can measure how long updates take
+    ld [REG_DIV], a
     ret
 
 
@@ -75,8 +77,9 @@ video_vblank:
     xor a, a
 .return:
     ld [video_state], a
-    pop af
-    reti
+    ld a, OAM_Y_OFFSET
+    ; this will pop af and reti
+    jp snow_draw
 
 
 section "video_wram", wram0

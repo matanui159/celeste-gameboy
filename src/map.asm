@@ -94,16 +94,6 @@ map_load::
     ret
 
 
-; () => void <reg_vbk: c>
-map_draw::
-    HDMA MEM_TILE_MAP0, map_tiles, MAP_SIZE
-    ld c, low(REG_VBK)
-    MV8 [c], $01
-    HDMA MEM_TILE_MAP0, map_attrs, MAP_SIZE
-    MV0 [c]
-    ret
-
-
 ; () => void
 map_init::
     ; setup scroll registers
@@ -116,11 +106,20 @@ map_init::
     HDMA MEM_TILE_MAP0 + MAP_SIZE, map_attrs, MAP_SIZE
     MV0 [c]
 
-    ; load and draw the first map
-    call map_load
-    jp map_draw
+    ; load the first map
+    jp map_load
+
+
+; () => void <reg_vbk: c>
+map_draw::
+    HDMA MEM_TILE_MAP0, map_tiles, MAP_SIZE
+    ld c, low(REG_VBK)
+    MV8 [c], $01
+    HDMA MEM_TILE_MAP0, map_attrs, MAP_SIZE
+    MV0 [c]
+    ret
 
 
 section "map_wram", wram0, align[8]
-map_tiles: ds MAP_SIZE
-map_attrs: ds MAP_SIZE
+map_tiles:: ds MAP_SIZE
+map_attrs:: ds MAP_SIZE
