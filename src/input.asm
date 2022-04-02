@@ -22,9 +22,17 @@ input_update::
     INPUT_HALF JOYP_NO_DIR
     swap a
     or a, b
-    ld [input], a
+    ld b, a
+
+    ld hl, input
+    ld a, [hl+]
+    cpl
+    and a, b
+    ld [hl-], a
+    ld [hl], b
     ret
 
 
 section "input_wram", wram0
 input:: db
+input_next:: db
