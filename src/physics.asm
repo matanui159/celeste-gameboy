@@ -1,17 +1,6 @@
 include "reg.inc"
 include "util.inc"
 
-; () => %z
-macro CP_FLAG
-    push bc
-    call tile_get_attr
-    ; get flag from stack
-    ld hl, sp+3
-    ld b, [hl]
-    and a, b
-    pop bc
-endm
-
 section "physics_rom", rom0
 
 
@@ -32,73 +21,73 @@ physics_accel::
     ret
 
 
-; (pos: bc, flag: a) => %nz
-tile_flag_at:
-    ; TODO: this can definitely be optimized lol
-    push af
+; (pos: bc) => a <pos: bc>
+tile_flags_at:
     ; top-left
     ; player hitbox has an offset of 1, 3
     inc b
     inc c
     inc c
     inc c
-    call tilepos_from_object
-    ld e, l
-    CP_FLAG
-    jr nz, .return
+    call tile_get_addr
+    call tile_get_attr
+    push af
 
     ; top-right
     ld a, b
-    add a, 6 - 1
-    ld b, a
-    call tilepos_from_object
-    ld a, l
-    cp a, e
-    jr z, .bottom
-    ld e, l
-    CP_FLAG
-    jr nz, .return
+    and a, $07
+    ; hitbox width is 6, so no need to check if x%8 < 3
+    cp a, 3
+    jr c, .bottom
+    inc l
+    call tile_get_attr
+    pop de
+    or a, d
+    push af
 
     ; bottom-right
     ld a, c
-    add a, 5 - 1
-    ld c, a
-    call tilepos_from_object
-    ld a, l
-    cp a, e
-    jr z, .return
-    CP_FLAG
-    jr nz, .return
+    and a, $07
+    ; hitbox height is 5 so no need to check if y%8 < 4
+    cp a, 4
+    jr c, .return
+    ld de, $20
+    add hl, de
+    call tile_get_attr
+    pop de
+    or a, d
+    push af
 
     ; bottom-left
-    ld a, b
-    sub a, 6 - 1
-    ld b, a
-    call tilepos_from_object
-    CP_FLAG
+    dec l
+    call tile_get_attr
+    pop de
+    or a, d
+    push af
 
 .return:
-    ; pop af into bc so we don't override flags
-    pop bc
+    ; reset position
+    dec b
+    dec c
+    dec c
+    dec c
+    pop af
     ret
 
 .bottom:
     ; bottom (edge case with no left/right difference)
     ld a, c
-    add a, 5 - 1
-    ld c, a
-    call tilepos_from_object
-    ld a, l
-    cp a, e
-    jr z, .return
-    CP_FLAG
+    and a, $07
+    ; hitbox height is 5 so no need to check if y%8 < 4
+    cp a, 4
+    jr c, .return
+    ld de, $20
+    add hl, de
+    call tile_get_attr
+    pop de
+    or a, d
+    push af
     jr .return
-
-
-; (pos: bc) => %nz
-solid_at:
-    ld a, $08
-    jp tile_flag_at
 
 
 ; (amount: a) => void
@@ -111,11 +100,10 @@ move_x:
     ; d > 0
 .pos:
     inc b
-    push bc
     push de
-    call solid_at
+    call tile_flags_at
     pop de
-    pop bc
+    bit 3, a ; solid
     jr nz, .pos_solid
     dec d
     jr nz, .pos
@@ -134,11 +122,10 @@ move_x:
     ; d < 0
 .neg:
     dec b
-    push bc
     push de
-    call solid_at
+    call tile_flags_at
     pop de
-    pop bc
+    bit 3, a ; solid
     jr nz, .neg_solid
     inc d
     jr nz, .neg

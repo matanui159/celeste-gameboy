@@ -4,14 +4,20 @@ include "input.inc"
 section "player_rom", rom0
 
 
-; (pos: l) => void
+; (tile_addr: hl) => void
 player_load::
-    call tilepos_to_object
+    push bc
+    push de
+    push hl
+    call tile_get_pos
     ld hl, object_player
     MV8 [hl+], c
     MV8 [hl+], b
     MV8 [hl+], 1
     MV0 [hl+]
+    pop hl
+    pop de
+    pop bc
     ret
 
 

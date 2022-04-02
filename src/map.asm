@@ -8,70 +8,85 @@ def MAP_SIZE   equ MAP_WIDTH * MAP_HEIGHT
 section "map_rom", rom0
 
 
-; (pos: l) => hl
-tile_get_addr::
+; (addr: hl) => bc <addr: hl>
+tile_get_pos::
+    ld de, -map_tiles & $ffff
+    add hl, de
+    ; X
+    MV8 d, [REG_SCX]
     ld a, l
-    and a, $0f
+    swap a
+    rrca
+    and a, $f8
+    sub a, d
+    add a, OAM_X_OFFSET
     ld b, a
-    ; we have to multiply the Y nybble by 2
-    xor a, a
-    sla l
-    adc high(map_tiles)
-    ld h, a
+    ; Y
+    MV8 d, [REG_SCY]
+    ld e, h
     ld a, l
-    and a, $e0
-    or a, b
-    ld l, a
+    srl e
+    rra
+    srl e
+    rra
+    and a, $f8
+    sub a, d
+    add a, OAM_Y_OFFSET
+    ld c, a
     ret
 
 
-; (tile: a, pos: l) => void
+; (tile: a, addr: hl) => hl
 tile_load::
-    ld c, a
-    call tile_get_addr
-    ld [hl], c
-
+    push bc
+    ld [hl], a
     ; get the palette from the attributes
     ld b, high(gen_attrs)
+    ld c, a
     ld a, [bc]
     and a, MAP_ATTR_PALETTE
     inc h
     inc h
-    ld [hl], a
+    ld [hl+], a
+    dec h
+    dec h
+    pop bc
     ret
 
 
 ; (id: a) => void
 map_load::
     add a, high(gen_maps)
-    ld h, a
-    ld l, $00
+    ld b, a
+    ld c, $00
+    ld hl, map_tiles
+    ; setup return address for `load` functions
+    ld de, .return
+    push de
+    ld de, $10
 .loop:
-    ld a, [hl]
 
     ; handle the tile
-    ; TODO: maybe switch this to having a callback table?
-    push hl
-    ; retup return address
-    ld bc, .return
-    push bc
-
+    ld a, [bc]
     cp a, 1
     jp z, player_load
 
-    ; goto default
-    pop bc
     jr .default
 .return:
-    pop hl
-    push hl
+    ; reuse return address
+    add sp, -2
     xor a, a
 .default:
     call tile_load
-    pop hl
 
-    inc l
+    dec e
+    jr nz, .cont
+    ld e, $10
+    add hl, de
+.cont:
+    inc c
     jr nz, .loop
+    pop de
     ret
 
 
@@ -101,57 +116,41 @@ map_draw::
     ret
 
 
-; (pos: l) => bc
-tilepos_to_object::
-    ; X
-    MV8 d, [REG_SCX]
-    ld a, l
-    and a, $0f
-    swap a
-    rra
-    sub a, d
-    add a, OAM_X_OFFSET
-    ld b, a
-    ; Y
-    MV8 d, [REG_SCY]
-    ld a, l
-    and a, $f0
-    rra
-    sub a, d
-    add a, OAM_Y_OFFSET
-    ld c, a
-    ret
-
-
-; (pos: bc) => l
-tilepos_from_object::
+; (pos: bc) => hl <pos: bc>
+tile_get_addr::
     ; X
     MV8 d, [REG_SCX]
     ld a, b
     sub a, OAM_X_OFFSET
     add a, d
-    add a, a
+    and a, $f8
     swap a
-    and a, $0f
+    rlca
     ld l, a
     ; Y
     MV8 d, [REG_SCY]
     ld a, c
     sub a, OAM_Y_OFFSET
     add a, d
+    and a, $f8
+    ld h, 0
     add a, a
-    and a, $f0
+    rl h
+    add a, a
+    rl h
+
     or a, l
     ld l, a
+    ld de, map_tiles
+    add hl, de
     ret
 
 
-; (pos: l) => a
+; (addr: hl) => a
 tile_get_attr::
-    call tile_get_addr
-    ld b, high(gen_attrs)
-    ld c, [hl]
-    ld a, [bc]
+    ld d, high(gen_attrs)
+    ld e, [hl]
+    ld a, [de]
     ret
 
 
