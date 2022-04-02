@@ -6,7 +6,7 @@ section "player_rom", rom0
 
 ; (pos: l) => void
 player_load::
-    call tile_get_pos
+    call tilepos_to_object
     ld hl, object_player
     MV8 [hl+], c
     MV8 [hl+], b
@@ -18,7 +18,7 @@ player_load::
 ; () => void
 player_update::
     ; -- move
-    LD16 hl, spd_x
+    LD16 hl, player_spd_x
     ld bc, 1.0 >>8
     MV16 de, hl
     ABS16 de
@@ -44,10 +44,10 @@ player_update::
 
 .move:
     call physics_accel
-    ST16 spd_x, hl
+    ST16 player_spd_x, hl
 
     jp physics_move
 
 
 section "player_wram", wram0
-spd_x: dw
+player_spd_x:: dw

@@ -8,28 +8,6 @@ def MAP_SIZE   equ MAP_WIDTH * MAP_HEIGHT
 section "map_rom", rom0
 
 
-; (pos: l) => bc
-tile_get_pos::
-    ; X
-    MV8 d, [REG_SCX]
-    ld a, l
-    and a, $0f
-    swap a
-    rra
-    sub a, d
-    add a, OAM_X_OFFSET
-    ld b, a
-    ; Y
-    MV8 d, [REG_SCY]
-    ld a, l
-    and a, $f0
-    rra
-    sub a, d
-    add a, OAM_Y_OFFSET
-    ld c, a
-    ret
-
-
 ; (pos: l) => hl
 tile_get_addr::
     ld a, l
@@ -47,7 +25,7 @@ tile_get_addr::
     ret
 
 
-; (tile: a, pos: l)
+; (tile: a, pos: l) => void
 tile_load::
     ld c, a
     call tile_get_addr
@@ -72,12 +50,15 @@ map_load::
     ld a, [hl]
 
     ; handle the tile
+    ; TODO: maybe switch this to having a callback table?
     push hl
     ; retup return address
     ld bc, .return
     push bc
+
     cp a, 1
     jp z, player_load
+
     ; goto default
     pop bc
     jr .default
@@ -110,13 +91,67 @@ map_init::
     jp map_load
 
 
-; () => void <reg_vbk: c>
+; () => void
 map_draw::
     HDMA MEM_TILE_MAP0, map_tiles, MAP_SIZE
     ld c, low(REG_VBK)
     MV8 [c], $01
     HDMA MEM_TILE_MAP0, map_attrs, MAP_SIZE
     MV0 [c]
+    ret
+
+
+; (pos: l) => bc
+tilepos_to_object::
+    ; X
+    MV8 d, [REG_SCX]
+    ld a, l
+    and a, $0f
+    swap a
+    rra
+    sub a, d
+    add a, OAM_X_OFFSET
+    ld b, a
+    ; Y
+    MV8 d, [REG_SCY]
+    ld a, l
+    and a, $f0
+    rra
+    sub a, d
+    add a, OAM_Y_OFFSET
+    ld c, a
+    ret
+
+
+; (pos: bc) => l
+tilepos_from_object::
+    ; X
+    MV8 d, [REG_SCX]
+    ld a, b
+    sub a, OAM_X_OFFSET
+    add a, d
+    add a, a
+    swap a
+    and a, $0f
+    ld l, a
+    ; Y
+    MV8 d, [REG_SCY]
+    ld a, c
+    sub a, OAM_Y_OFFSET
+    add a, d
+    add a, a
+    and a, $f0
+    or a, l
+    ld l, a
+    ret
+
+
+; (pos: l) => a
+tile_get_attr::
+    call tile_get_addr
+    ld b, high(gen_attrs)
+    ld c, [hl]
+    ld a, [bc]
     ret
 
 

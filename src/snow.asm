@@ -11,11 +11,13 @@ section "snow_rom", rom0
 snow_init::
     ld hl, snow_spd
 .loop:
+    ; generate starting position
     push hl
     call rand
     pop hl
     dec h
     ld [hl], a
+    ; generate speed
     push hl
     call rand
     and a, $03
@@ -23,6 +25,7 @@ snow_init::
     pop hl
     inc h
     ld [hl+], a
+
     ld a, l
     cp a, OAM_Y_OFFSET + LCDC_HEIGHT
     jr nz, .loop
