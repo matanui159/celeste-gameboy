@@ -1,91 +1,112 @@
-include "reg.inc"
-include "util.inc"
+include "hardware.inc"
 
-section "video_vblank", rom0[$0040]
-    jp video_vblank
+section "VBlank interrupt", rom0[$0040]
+    jp VBlank
 
-section "video_rom", rom0
+section "Video ROM", rom0
 
 
-; (reg: c, dst: a, src: hl, size: b) => void <next_reg: c>
-video_palcpy::
-    ld [c], a
+;; @param  c: Palette index register
+;; @param  a: Destination palette address
+;; @param hl: Source address
+;; @param  b: Size
+;; @effect c: Next index register
+PaletteCopy::
+    ; Add the auto-increment flag
+    set BCPSB_AUTOINC, a
+    ldh [c], a
+    ; Get the data register
     inc c
 .loop:
-    MV8 [c], [hl+]
+    ld a, [hl+]
+    ldh [c], a
     dec b
     jr nz, .loop
+    ; Get the next index register
     inc c
     ret
 
 
-; () => void
-video_init::
-    ld c, low (REG_LCDC)
-    ld a, [c]
-    bit 7, a ; LCDC_ON
+;; Initializes the video subsystem
+VideoInit::
+    ld c, low (rLCDC)
+    ldh a, [c]
+    bit LCDCB_ON, a ; LCDC_ON
     jr z, .off
-    MV8 [REG_IE], INT_VBLANK
-    MV0 [REG_IF]
+    ; Wait for the next V-blank
+    ld a, IEF_VBLANK
+    ldh [rIE], a
+    xor a, a
+    ldh [rIF], a
     halt
-    ld [c], a
+    ; Clear the LCDC register
+    ldh [c], a
 .off:
 
-    MV0 [video_state]
-    HDMA MEM_TILE_DATA0, gen_tiles, gen_tiles.end - gen_tiles
+    ; Copy over the tile data
+    ld hl, _VRAM
+    ld bc, GenTiles
+    ld de, GenTiles.end - GenTiles
+    call MemoryCopy
 
-    ld c, low(REG_BGPI)
-    ld a, $00 | PI_INC
-    ld hl, gen_bg_palettes
-    ld b, gen_bg_palettes.end - gen_bg_palettes
-    call video_palcpy
+    ; Copy over the palettes
+    ld c, low(rBCPS)
+    ld a, $00
+    ld hl, GenPalsBG
+    ld b, GenPalsBG.end - GenPalsBG
+    call PaletteCopy
 
-    ld a, $00 | PI_INC
-    ld hl, gen_obj_palettes
-    ld b, gen_obj_palettes.end - gen_obj_palettes
-    jp video_palcpy
+    ld a, $00
+    ld hl, GenPalsOBJ
+    ld b, GenPalsOBJ.end - GenPalsOBJ
+    call PaletteCopy
 
-
-; () => void
-video_draw::
-    ; TODO: wait for second v-blank before updating so input is more up-to-date
-    ld hl, video_state
-    set 1, [hl]
-.loop:
-    halt
-    ld a, [video_state]
-    or a, a
-    jr nz, .loop
-    ; we reset the timer so we can measure how long updates take
-    ld [REG_DIV], a
+    ; Clear the video state
+    xor a, a
+    ldh [hState], a
     ret
 
 
-; () => void
-video_vblank:
+;; Waits for the next V-blank to render the frame
+VideoDraw::
+    ; TODO: wait for second v-blank before updating so input is more up-to-date
+    ldh a, [hState]
+    set 1, a
+    ldh [hState], a
+.loop:
+    halt
+    ldh a, [hState]
+    or a, a
+    jr nz, .loop
+    ; We reset the timer so we can measure how long updates take
+    ldh [rDIV], a
+    ret
+
+
+;; The V-blank interrupt handler
+VBlank:
     push af
-    ld a, [video_state]
+    ldh a, [hState]
     cp a, $03
     set 0, a
     jr nz, .return
 
-    ; we are in `video_draw` so we do not have to worry about saving registers
+    ; We are in `video_draw` so we do not have to worry about saving registers
     call objects_draw
     call map_draw
 
     xor a, a
 .return:
-    ld [video_state], a
-    ld a, OAM_Y_OFFSET
+    ld [hState], a
     pop af
     reti
 
 
-section "video_wram", wram0
+section "Video HRAM", hram
 ; bit 0: a singular frame has passed so the next frame will update and draw (to
 ;        limit to 30Hz)
 ; bit 1: updating is finished and the non-interrupt code is waiting for the next
 ;        draw to finish
 ; vblank sets bit 0 but will not update anything until both bit 0 and bit 1 are
 ; set
-video_state: db
+hState: db

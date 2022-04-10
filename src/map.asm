@@ -41,7 +41,7 @@ tile_load::
     push bc
     ld [hl], a
     ; get the palette from the attributes
-    ld b, high(gen_attrs)
+    ld b, high(GenAttrs)
     ld c, a
     ld a, [bc]
     and a, MAP_ATTR_PALETTE
@@ -56,7 +56,7 @@ tile_load::
 
 ; (id: a) => void
 map_load::
-    add a, high(gen_maps)
+    add a, high(GenMaps)
     ld b, a
     ld c, $00
     ld hl, map_tiles
@@ -148,7 +148,7 @@ tile_get_addr::
 
 ; (addr: hl) => a
 tile_get_attr::
-    ld d, high(gen_attrs)
+    ld d, high(GenAttrs)
     ld e, [hl]
     ld a, [de]
     ret

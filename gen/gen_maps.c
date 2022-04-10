@@ -2,8 +2,8 @@
 
 int main(void) {
     gen_load();
-    printf("section \"gmaps_rom\", romx, bank[1], align[8]\n");
-    printf("gen_maps::");
+    printf("section \"Generated maps\", romx, bank[1], align[8]\n");
+    printf("GenMaps::");
     for (size_t i = 0; i < 32; i += 1) {
         size_t map_x = i % 8;
         size_t map_y = i / 8;

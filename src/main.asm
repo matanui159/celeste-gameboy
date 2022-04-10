@@ -18,7 +18,7 @@ Main:
     ld sp, $e000
 
     call RandomInit
-    call video_init
+    call VideoInit
     call map_init
     call objects_init
 
@@ -36,5 +36,5 @@ Main:
 
     call input_update
     call player_update
-    call video_draw
+    call VideoDraw
     jr .loop

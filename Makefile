@@ -7,10 +7,10 @@ DEBUG_FLAGS = -p
 
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
-	bin/gen/gtiles.obj \
-	bin/gen/gpalettes.obj \
-	bin/gen/gattrs.obj \
-	bin/gen/gmaps.obj \
+	bin/gen/gen_tiles.obj \
+	bin/gen/gen_pals.obj \
+	bin/gen/gen_attrs.obj \
+	bin/gen/gen_maps.obj \
 	bin/src/main.obj \
 	bin/src/memory.obj \
 	bin/src/random.obj \
@@ -22,7 +22,7 @@ CELESTE_OBJ = \
 	bin/src/player.obj
 
 LUA = bin/celeste.lua
-LUA_GEN = bin/gen/glua
+LUA_GEN = bin/gen/gen_lua
 
 all: $(CELESTE) $(LUA)
 clean:
