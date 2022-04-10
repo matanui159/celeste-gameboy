@@ -19,7 +19,8 @@ CELESTE_OBJ = \
 	bin/src/object.obj \
 	bin/src/input.obj \
 	bin/src/physics.obj \
-	bin/src/player.obj
+	bin/src/player.obj \
+	bin/src/fragment.obj
 
 LUA = bin/celeste.lua
 LUA_GEN = bin/gen/gen_lua

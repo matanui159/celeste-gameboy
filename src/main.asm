@@ -20,7 +20,7 @@ Main:
     call RandomInit
     call VideoInit
     call map_init
-    call objects_init
+    call ObjectsInit
 
     ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a

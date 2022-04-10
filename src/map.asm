@@ -154,6 +154,10 @@ tile_get_attr::
     ret
 
 
+section fragment "VBlank", rom0
+    call map_draw
+
+
 section "map_wram", wram0, align[4]
 map_tiles:: ds MAP_SIZE
 map_attrs:: ds MAP_SIZE

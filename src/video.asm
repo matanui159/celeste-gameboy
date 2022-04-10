@@ -63,19 +63,19 @@ VideoInit::
 
     ; Clear the video state
     xor a, a
-    ldh [hState], a
+    ldh [hVideoState], a
     ret
 
 
 ;; Waits for the next V-blank to render the frame
 VideoDraw::
     ; TODO: wait for second v-blank before updating so input is more up-to-date
-    ldh a, [hState]
+    ldh a, [hVideoState]
     set 1, a
-    ldh [hState], a
+    ldh [hVideoState], a
 .loop:
     halt
-    ldh a, [hState]
+    ldh a, [hVideoState]
     or a, a
     jr nz, .loop
     ; We reset the timer so we can measure how long updates take
@@ -83,23 +83,19 @@ VideoDraw::
     ret
 
 
-;; The V-blank interrupt handler
+section fragment "VBlank", rom0
+
+
+;; The V-blank interrupt handler. We have this in a fragment section so that
+;; Multiple source files can add to this code
 VBlank:
     push af
-    ldh a, [hState]
+    ldh a, [hVideoState]
     cp a, $03
     set 0, a
-    jr nz, .return
-
-    ; We are in `video_draw` so we do not have to worry about saving registers
-    call objects_draw
-    call map_draw
-
-    xor a, a
-.return:
-    ld [hState], a
-    pop af
-    reti
+    jr nz, VBlankReturn
+    ; We are in `VideoDraw` so we do not have to worry about saving registers
+    ; Other pieces of fragment code will continue here
 
 
 section "Video HRAM", hram
@@ -109,4 +105,4 @@ section "Video HRAM", hram
 ;        draw to finish
 ; vblank sets bit 0 but will not update anything until both bit 0 and bit 1 are
 ; set
-hState: db
+hVideoState:: db

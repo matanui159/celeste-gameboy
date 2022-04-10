@@ -10,7 +10,7 @@ player_load::
     push de
     push hl
     call tile_get_pos
-    ld hl, object_player
+    ld hl, wObjectPlayer
     MV8 [hl+], c
     MV8 [hl+], b
     MV8 [hl+], 1

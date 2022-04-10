@@ -1,39 +1,42 @@
-include "reg.inc"
-include "util.inc"
+include "hardware.inc"
 
-section "object_rom", rom0
+section "Objects ROM", rom0
 
 
-; () => void
-objects_draw_rom:
-load "object_hram", hram
-objects_draw::
-    MV8 [REG_DMA], high(object_smoke)
-    ld a, $40
+;; @param c: DMA register
+;; @param a: Source high address
+;; @param b: Wait time
+ObjectDMA:
+load "Object DMA", hram
+hObjectDMA:
+    ldh [c], a
 .loop:
-    dec a
+    dec b
     jr nz, .loop
     ret
 .end:
 endl
 
 
-; () => void
-objects_init::
-    ld c, low(objects_draw)
-    ld hl, objects_draw_rom
-    ld b, objects_draw.end - objects_draw
-.loop:
-    MV8 [c], [hl+]
-    inc c
-    dec b
-    jr nz, .loop
-    ret
+;; Initializes the object rendering
+ObjectsInit::
+    ; Copy over the DMA function to HRAM
+    ld hl, hObjectDMA
+    ld bc, ObjectDMA
+    ld de, hObjectDMA.end - hObjectDMA
+    jp MemoryCopy
 
 
-section "object_wram", wram0, align[8]
-object_snow:: ds OAM_SIZE
-object_smoke:: ds 9 * OAM_SIZE
-object_player:: ds OAM_SIZE
-object_fruit:: ds 3 * OAM_SIZE
-objects:: ds 26 * OAM_SIZE
+section fragment "VBlank", rom0
+    ld a, high(wObjectSnow)
+    ; High byte is 40 wait loops, low byte is DMA register
+    ld bc, $2846
+    call hObjectDMA
+
+
+section "Object WRAM", wram0, align[8]
+wObjectSnow:: ds sizeof_OAM_ATTRS
+wObjectsSmoke:: ds 9 * sizeof_OAM_ATTRS
+wObjectPlayer:: ds sizeof_OAM_ATTRS
+wObjectsFruit:: ds 3 * sizeof_OAM_ATTRS
+wObjects:: ds 26 * sizeof_OAM_ATTRS

@@ -93,8 +93,8 @@ tile_flags_at:
 ; (amount: a) => void
 move_x:
     ld d, a
-    MV8 b, [object_player + OAM_X]
-    MV8 c, [object_player + OAM_Y]
+    MV8 b, [wObjectPlayer + OAM_X]
+    MV8 c, [wObjectPlayer + OAM_Y]
     JRN8 d, .neg
 
     ; d > 0
@@ -116,7 +116,7 @@ move_x:
     ld hl, 0
     ST16 player_spd_x, hl
 .return:
-    MV8 [object_player + OAM_X], b
+    MV8 [wObjectPlayer + OAM_X], b
     ret
 
     ; d < 0
