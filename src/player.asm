@@ -32,13 +32,13 @@ player_update::
 
     ; accel
     ld de, 0.6 >>8
-    ld a, [input]
-    bit INPUT_LEFT, a
+    ld a, [hInput]
+    bit INB_LEFT, a
     jr z, .noleft
     NEG16 bc
     jr .move
 .noleft:
-    bit INPUT_RIGHT, a
+    bit INB_RIGHT, a
     jr nz, .move
     ld bc, 0
     jr .move

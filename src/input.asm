@@ -1,38 +1,45 @@
-include "reg.inc"
-include "util.inc"
+include "hardware.inc"
 
-; (joyp: 8) => a
-macro INPUT_HALF
-    MV8 [c], \1
+section "Input ROM", rom0
+
+
+;; Updates the input variables in HRAM
+InputUpdate::
+    ld c, low(rP1)
+    ; Get the DPAD buttons
+    ld a, P1F_GET_DPAD
+    ldh [c], a
 rept 4
-    ld a, [c]
+    ldh a, [c]
 endr
+    ; Invert and get the lower half, save in B
     cpl
     and a, $0f
-endm
-
-section "input_rom", rom0
-
-
-; () => void
-input_update::
-    ld c, low(REG_JOYP)
-    INPUT_HALF JOYP_NO_ACT
     ld b, a
-    INPUT_HALF JOYP_NO_DIR
+    ; Get the action buttons
+    ld a, P1F_GET_BTN
+    ldh [c], a
+rept 4
+    ldh a, [c]
+endr
+    ; Invert and get the lower half, merge with B
+    cpl
+    and a, $0f
     swap a
     or a, b
-    ld b, a
 
-    ld hl, input
-    ld a, [hl+]
+    ; Save into HRAM and compare against the previous frame
+    ld b, a
+    ldh a, [hInput]
+    ; Is pressed now AND NOT pressed last frame
     cpl
     and a, b
-    ld [hl-], a
-    ld [hl], b
+    ldh [hInputNext], a
+    ld a, b
+    ldh [hInput], a
     ret
 
 
-section "input_wram", wram0
-input:: db
-input_next:: db
+section "Input HRAM", hram
+hInput:: db
+hInputNext:: db

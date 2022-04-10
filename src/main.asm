@@ -34,7 +34,7 @@ Main:
     ; Add more entropy to the randomiser
     call Random
 
-    call input_update
+    call InputUpdate
     call player_update
     call VideoDraw
     jr .loop

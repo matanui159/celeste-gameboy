@@ -1,3 +1,5 @@
+include "hardware.inc"
+
 if !def(REG_INC)
 def REG_INC equ 1
 
@@ -21,7 +23,6 @@ def OAM_X     rb  1
 def OAM_TILE  rb  1
 def OAM_ATTR  rb  1
 def OAM_SIZE  rb  0
-def OAM_COUNT equ 40
 
 def OAM_X_OFFSET     equ 8
 def OAM_Y_OFFSET     equ 16
