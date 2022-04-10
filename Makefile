@@ -8,17 +8,16 @@ DEBUG_FLAGS = -p
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
 	bin/gen/gtiles.obj \
-	bin/src/tiles.obj \
 	bin/gen/gpalettes.obj \
 	bin/gen/gattrs.obj \
 	bin/gen/gmaps.obj \
 	bin/src/main.obj \
-	bin/src/rand.obj \
+	bin/src/memory.obj \
+	bin/src/random.obj \
 	bin/src/video.obj \
 	bin/src/map.obj \
 	bin/src/object.obj \
 	bin/src/input.obj \
-	bin/src/snow.obj \
 	bin/src/physics.obj \
 	bin/src/player.obj
 

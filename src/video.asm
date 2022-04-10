@@ -33,7 +33,6 @@ video_init::
 
     MV0 [video_state]
     HDMA MEM_TILE_DATA0, gen_tiles, gen_tiles.end - gen_tiles
-    HDMA MEM_TILE_DATA1, tiles_extra, tiles_extra.end - tiles_extra
 
     ld c, low(REG_BGPI)
     ld a, $00 | PI_INC
@@ -78,8 +77,8 @@ video_vblank:
 .return:
     ld [video_state], a
     ld a, OAM_Y_OFFSET
-    ; this will pop af and reti
-    jp snow_draw
+    pop af
+    reti
 
 
 section "video_wram", wram0

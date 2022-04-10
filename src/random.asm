@@ -1,19 +1,19 @@
-section "rand_rom", rom0
+section "Random ROM", rom0
 
 
-; () => void
-rand_init::
-    ; [rand_state] = $ffff
-    ld a, $ff
-    ld hl, rand_state
+;; Initializers the randomizer
+RandomInit::
+    ; Sets the initial state to $5a5a
+    ld a, $5a
+    ld hl, wRandomState
     ld [hl+], a
     ld [hl+], a
     ret
 
 
-; () => a
-rand::
-    ld hl, rand_state
+; @returns a: A random number
+Random::
+    ld hl, wRandomState
     ; ba = [hl+]
     ld a, [hl+]
     ld b, [hl]
@@ -48,5 +48,5 @@ rand::
     ret
 
 
-section "rand_wram", wram0
-rand_state: dw
+section "Random WRAM", wram0
+wRandomState: dw

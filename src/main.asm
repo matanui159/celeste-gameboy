@@ -1,43 +1,38 @@
-include "reg.inc"
-include "util.inc"
+include "hardware.inc"
 
-section "header_rom", rom0[$0100]
-    jp main
+section "Header", rom0[$0100]
+    jp Main
     ds $4d
 
-section "main_rom", rom0
+section "Main ROM", rom0
 
 
-; () => void
-main:
-    di
+;; The main entry point
+Main:
     ; reset memory
-    xor a, a
+    ; TODO: remove this when respective parts of the code do this themselves
     ld hl, $c000
-    ld b, a
-.clear:
-rept $20
-    ld [hl+], a
-endr
-    dec b
-    jr nz, .clear
-    ; setup stack
+    ld de, $2000
+    call MemoryClear
+    ; Setup stack to point to the top of memory
     ld sp, $e000
 
-    call rand_init
+    call RandomInit
     call video_init
     call map_init
     call objects_init
-    call snow_init
 
-    MV8 [REG_LCDC], LCDC_BG_DATA0 | LCDC_OBJ_ON | LCDC_ON
-    MV8 [REG_IE], INT_VBLANK | INT_STAT
-    MV0 [REG_IF]
+    ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
+    ldh [rLCDC], a
+    ld a, IEF_VBLANK
+    ldh [rIE], a
+    xor a, a
+    ldh [rIF], a
     ei
 
 .loop:
-    ; add more entropy
-    call rand
+    ; Add more entropy to the randomiser
+    call Random
 
     call input_update
     call player_update

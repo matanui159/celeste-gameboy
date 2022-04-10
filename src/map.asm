@@ -154,6 +154,6 @@ tile_get_attr::
     ret
 
 
-section "map_wram", wram0, align[8]
+section "map_wram", wram0, align[4]
 map_tiles:: ds MAP_SIZE
 map_attrs:: ds MAP_SIZE
