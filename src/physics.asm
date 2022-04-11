@@ -1,23 +1,91 @@
+include "hardware.inc"
+
 include "reg.inc"
 include "util.inc"
 
-section "physics_rom", rom0
+section "Physics ROM", rom0
 
 
-; (value: hl, target: bc, accel: de) => void
-physics_accel::
-    ; This is called `appr` in the original source code
-    ; Likely short for appreciate
-    JRL16 hl, bc, .less
-    SUB16 hl, de
-    JRL16 hl, bc, .equal
-.return:
+; Resets the physics variables
+PhysicsLoad::
+    xor a, a
+    ldh [hPlayerRemX], a
     ret
-.less:
+
+
+;; Updates a value until it meets a target
+;; This is called `appr` in the original source code, likely short for
+;; appreciate.
+;; Unlike the Lua verison of this code, this only updates in one direction.
+;;
+;; @param hl: Current value
+;; @param bc: Target value
+;; @param de: Rate to increase or decrease by
+;; @returns hl: New value
+PhysicsAccelerate::
+    ; Add to the value
     add hl, de
-    JRL16 hl, bc, .return
+    ; Do a 16-bit signed compare between the new value and the target value,
+    ; store the result in A.
+    ; As part of this compare we use DE to be H and B with the high bit inverted
+    push de
+    ld a, h
+    xor a, $80
+    ld d, a
+    ld a, b
+    xor a, $80
+    ld e, a
+    ld a, l
+    sub a, c
+    ld a, d
+    sbc a, e
+    rla
+    ; Check the sign of DE to see if we are accelerating or deccelerating
+    pop de
+    bit 7, d
+    jr nz, .deccelerate
+
+    ; When accelerating we set the value to the target if it is larger than the
+    ; target
+    bit 0, a
+    ret nz
+    jr .equal
+
+.deccelerate:
+    ; When deccelerating we set the value to the target if it is smaller than
+    ; the target
+    bit 0, a
+    ret z
+
 .equal:
-    MV16 hl, bc
+    ld h, b
+    ld l, c
+    ret
+
+
+;; @param h: Amount
+moveX:
+    ld a, [wObjectPlayer + OAMA_X]
+    add a, h
+    ld [wObjectPlayer + OAMA_X], a
+    ret
+
+
+;; @param bc: Speed X
+PhysicsMovePlayer::
+    ; -- [x] get move amount --
+    ; We add the remainder to the speed, and use the high byte to move the
+    ; player. The low byte gets saved back as a remainder.
+    ldh a, [hPlayerRemX]
+    ld l, a
+    ld h, 0
+    add hl, bc
+    ld a, l
+    ldh [hPlayerRemX], a
+    ; If it is non-zero, we move in the X direction
+    ld a, h
+    or a, a
+    jp nz, moveX
     ret
 
 
@@ -112,9 +180,9 @@ move_x:
 .pos_solid:
     dec b
 .solid:
-    MV0 [rem_x]
+    MV0 [hPlayerRemX]
     ld hl, 0
-    ST16 player_spd_x, hl
+    ST16 wPlayerSpeedX, hl
 .return:
     MV8 [wObjectPlayer + OAM_X], b
     ret
@@ -139,7 +207,7 @@ move_x:
 ; (spd_x: hl) => void
 physics_move::
     ; -- [x] get move amount
-    ld bc, rem_x
+    ld bc, hPlayerRemX
     ld d, 0
     MV8 e, [bc]
     add hl, de
@@ -151,5 +219,5 @@ physics_move::
     ret
 
 
-section "physics_wram", wram0
-rem_x: db
+section "Physics HRAM", hram
+hPlayerRemX: db

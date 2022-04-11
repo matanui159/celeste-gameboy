@@ -29,7 +29,7 @@ Main:
     call Random
     call MapUpdate
     call InputUpdate
-    ; call player_update
+    call PlayerUpdate
     ; Wait for two frames so we run at 30Hz
     ld b, 2
     call VideoDraw

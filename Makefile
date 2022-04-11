@@ -1,6 +1,6 @@
 CFLAGS = -Wall -Wextra -Wpedantic
-ASM_FLAGS = -Weverything
-LINK_FLAGS = -w
+ASM_FLAGS = -Weverything -Wno-shift
+LINK_FLAGS = -tw
 FIX_FLAGS = -vCj -t CELESTE -n 0x10 # ver. 1.0
 BINJGB_FLAGS = -C 1
 DEBUG_FLAGS = -p

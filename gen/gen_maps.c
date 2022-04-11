@@ -2,7 +2,7 @@
 
 int main(void) {
     gen_load();
-    printf("section \"Generated maps\", romx, bank[1], align[8]\n");
+    printf("section \"Generated maps\", rom0, align[8]\n");
     printf("GenMaps::");
     for (size_t i = 0; i < 32; i += 1) {
         size_t map_x = i % 8;
