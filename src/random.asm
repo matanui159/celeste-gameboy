@@ -5,7 +5,7 @@ section "Random ROM", rom0
 RandomInit::
     ; Sets the initial state to $5a5a
     ld a, $5a
-    ld hl, wRandomState
+    ld hl, wState
     ld [hl+], a
     ld [hl+], a
     ret
@@ -13,7 +13,7 @@ RandomInit::
 
 ; @returns a: A random number
 Random::
-    ld hl, wRandomState
+    ld hl, wState
     ; ba = [hl+]
     ld a, [hl+]
     ld b, [hl]
@@ -49,4 +49,4 @@ Random::
 
 
 section "Random WRAM", wram0
-wRandomState: dw
+wState: dw

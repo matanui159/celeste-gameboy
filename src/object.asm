@@ -20,6 +20,11 @@ endl
 
 ;; Initializes the object rendering
 ObjectsInit::
+    ; Clear the OAM source
+    ld hl, wObjectSnow
+    ld de, wObjects.end - wObjectSnow
+    call MemoryClear
+
     ; Copy over the DMA function to HRAM
     ld hl, hObjectDMA
     ld bc, ObjectDMA
@@ -28,6 +33,7 @@ ObjectsInit::
 
 
 section fragment "VBlank", rom0
+VBlankObjects:
     ld a, high(wObjectSnow)
     ; High byte is 40 wait loops, low byte is DMA register
     ld bc, $2846
@@ -40,3 +46,4 @@ wObjectsSmoke:: ds 9 * sizeof_OAM_ATTRS
 wObjectPlayer:: ds sizeof_OAM_ATTRS
 wObjectsFruit:: ds 3 * sizeof_OAM_ATTRS
 wObjects:: ds 26 * sizeof_OAM_ATTRS
+.end::

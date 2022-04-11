@@ -1,7 +1,28 @@
+include "hardware.inc"
 include "util.inc"
 include "input.inc"
 
-section "player_rom", rom0
+section "Player ROM", rom0
+
+
+;; @param l: Tile position
+PlayerLoad::
+    call MapTilePosition
+    push hl
+    ld hl, wObjectPlayer
+    ; X
+    ld [hl], c
+    inc l
+    ; Y
+    ld [hl], b
+    inc l
+    ; Tile ID
+    ld [hl], 1
+    inc l
+    ; Attributes, palette index 0
+    ld [hl], 0
+    pop hl
+    ret
 
 
 ; (tile_addr: hl) => void

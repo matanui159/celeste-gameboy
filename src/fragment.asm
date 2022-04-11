@@ -1,6 +1,8 @@
 section fragment "VBlank", rom0
-    xor a, a
+    pop bc
+    ldh a, [hVideoFrames]
 VBlankReturn::
-    ld [hVideoState], a
+    inc a
+    ldh [hVideoFrames], a
     pop af
     reti
