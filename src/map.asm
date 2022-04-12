@@ -15,19 +15,12 @@ def OP_RET      equ $c9
 section "Map ROM", rom0
 
 
-;; Clears the update queue
-MapUpdate::
-    ld a, OP_RET
-    ld [wUpdateQueue], a
-    ret
-
-
 ;; Sets up the tile and the matching attributes from GenAttrs
 ;; @param a: Tile ID
 ;; @param l: Tile position
 ;; @saved hl
 TileLoad:
-    ld b, high(wTiles)
+    ld b, high(wMapTiles)
     ld c, l
     ld [bc], a
     ; Get the palette from the attributes
@@ -35,7 +28,7 @@ TileLoad:
     ld e, a
     ld a, [de]
     and a, OAMF_PALMASK
-    ; Write the palette to wAttrs
+    ; Write the palette to wMapAttrs
     inc b
     ld [bc], a
     ret
@@ -75,13 +68,14 @@ MapLoad::
     jr nz, .loadLoop
     pop bc
 
-    ; Clear the update queue since they're now out of date
-    call MapUpdate
+    ; Clear the update queue since it's now out of date
+    ld a, OP_RET
+    ld [wUpdateQueue], a
 
     ; Disable LCD and copy over the map to VRAM
     call VideoDisable
     ld hl, _SCRN0
-    ld bc, wTiles
+    ld bc, wMapTiles
     ld de, MAP_X_B
 .tileCopyLoop:
     ; Copy over a row of tiles
@@ -186,99 +180,69 @@ MapTilePosition::
     ret
 
 
-section fragment "VBlank", rom0
-VBlankMap:
-    call wUpdateQueue
-
-
-section "Map WRAM", wram0, align[8]
-wTiles: ds MAP_X_B * MAP_Y_B
-wAttrs: ds MAP_X_B * MAP_Y_B
-; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`
-wUpdateQueue:: ds MAP_UPDATES * 5 + 1
-
-
-include "reg.inc"
-include "util.inc"
-
-def MAP_WIDTH  equ 32
-def MAP_HEIGHT equ 16
-def MAP_SIZE   equ MAP_WIDTH * MAP_HEIGHT 
-
-section "map_rom", rom0
-
-
-; (addr: hl) => bc <addr: hl>
-tile_get_pos::
-    ld de, -map_tiles & $ffff
-    add hl, de
-    ; X
-    MV8 d, [REG_SCX]
-    ld a, l
-    swap a
-    rrca
-    and a, $f8
-    sub a, d
-    add a, OAM_X_OFFSET
-    ld b, a
-    ; Y
-    MV8 d, [REG_SCY]
-    ld e, h
-    ld a, l
-    srl e
-    rra
-    srl e
-    rra
-    and a, $f8
-    sub a, d
-    add a, OAM_Y_OFFSET
-    ld c, a
-    ret
-
-
-; (pos: bc) => hl <pos: bc>
-tile_get_addr::
-    ; X
-    MV8 d, [REG_SCX]
+;; Finds the nearest tile to the provided position
+;; @param bc: X and Y position
+;; @returns l: Tile position
+;; @saved bc
+MapFindTileAt::
+    ; Get the X scroll position
+    ldh a, [rSCX]
+    ld d, a
+    ; X position (low nybble)
+    ; Undo scroll and OAM offsets
     ld a, b
-    sub a, OAM_X_OFFSET
+    sub a, OAM_X_OFS
     add a, d
-    and a, $f8
+    ; Shift right by 3
+    add a, a
     swap a
-    rlca
+    and a, $0f
     ld l, a
-    ; Y
-    MV8 d, [REG_SCY]
-    ld a, c
-    sub a, OAM_Y_OFFSET
-    add a, d
-    and a, $f8
-    ld h, 0
-    add a, a
-    rl h
-    add a, a
-    rl h
+.capX:
 
+    ; Get the Y scroll position
+    ldh a, [rSCY]
+    ld d, a
+    ; Y position (high nybble)
+    ; Undo offsets
+    ld a, c
+    sub a, OAM_Y_OFS
+    add a, d
+    ; Shift left by 1
+    add a, a
+    and a, $f0
+.capY:
     or a, l
     ld l, a
-    ld de, map_tiles
-    add hl, de
     ret
 
 
-; (addr: hl) => a
-tile_get_attr::
+;; Gets the attributes of a tile
+;; @param l: Tile position
+;; @returns a: Attributes
+;; @saved l
+MapTileAttributes::
+    ; Get the tile ID
+    ld h, high(wMapTiles)
+    ld a, [hl]
+    ; Get the original attributes from the lookup table
     ld d, high(GenAttrs)
-    ld e, [hl]
+    ld e, a
     ld a, [de]
     ret
 
 
-; section fragment "VBlank", rom0
-; VBlankMap:
-;     call map_draw
+section fragment "VBlank", rom0
+VBlankMap:
+    call wUpdateQueue
+    ; Clear the queue
+    ld a, OP_RET
+    ld [wUpdateQueue], a
 
 
-section "map_wram", wram0, align[4]
-def map_tiles equ $c000
-def map_attrs equ $c400
+section "Map WRAM", wram0, align[8]
+wMapTiles:: ds MAP_X_B * MAP_Y_B
+wMapAttrs:: ds MAP_X_B * MAP_Y_B
+; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`
+wUpdateQueue: ds MAP_UPDATES * 5 + 1
+

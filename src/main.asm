@@ -27,7 +27,6 @@ Main:
 .loop:
     ; Add more entropy to the randomiser
     call Random
-    call MapUpdate
     call InputUpdate
     call PlayerUpdate
     ; Wait for two frames so we run at 30Hz

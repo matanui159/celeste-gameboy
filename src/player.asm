@@ -1,9 +1,6 @@
 include "hardware.inc"
 include "input.inc"
 
-; TODO: remove this include
-include "util.inc"
-
 section "Player ROM", rom0
 
 

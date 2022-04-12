@@ -1,8 +1,5 @@
 include "hardware.inc"
 
-include "reg.inc"
-include "util.inc"
-
 section "Physics ROM", rom0
 
 
@@ -63,10 +60,140 @@ PhysicsAccelerate::
     ret
 
 
-;; @param h: Amount
+;; ORs all the flags of all the tiles the player collides with
+;; @param bc: Player position
+;; @returns a: Tile flags
+;; @saved bc
+tileFlagsAt:
+    ; First we check the top-left tile, near the X/Y position
+    ; The player has a hitbox offset of 1, 3
+    inc b
+    inc c
+    inc c
+    inc c
+    ; These are in seperate calls since we only need to find the tile once
+    ; and then can get the attributes from offsets of that tile
+    call MapFindTileAt
+    call MapTileAttributes
+    ; Save the attributes for now
+    push af
+
+    ; Check the top-right tile (1 to the right)
+    ; The hitbox width is 6 so we only need to check this if X % 8 >= 3
+    ld a, b
+    and a, $07
+    cp a, 3
+    jr c, .skipRight
+    ; Check 1 tile to the right
+    inc l
+    call MapTileAttributes
+    ; OR it with the previous attributes currently in the stack
+    pop de
+    or a, d
+    push af
+
+    ; Check the bottom-right tile (1 down)
+    ; The hitbox height is 5 so we only need to check this if Y % 8 >= 4
+    ld a, c
+    and a, $07
+    cp a, 4
+    jr c, .return
+    ; Check 1 tile down
+    ld a, l
+    add a, $10
+    ld l, a
+    call MapTileAttributes
+    ; OR with previous attributes
+    pop de
+    or a, d
+    push af
+
+.skipRight
+    ; Check the bottom-left tile (1 to the left)
+    ; We have to check left/right differences again because we may jump here
+    ; from the top-right check
+    ld a, b
+    and a, $07
+    cp a, 3
+    jr c, .return
+    dec l
+    call MapTileAttributes
+    ; OR with previous attributes
+    pop de
+    or a, d
+    ; We push here still due to sometimes things skipping over to the return code
+    push af
+
+.return:
+    ; Undo the hitbox offset
+    dec b
+    dec c
+    dec c
+    dec c
+    pop af
+    ret
+
+
+;; @param a: Amount
 moveX:
-    ld a, [wObjectPlayer + OAMA_X]
-    add a, h
+    ; Get the position
+    ; We move A to D because we need A for getting the flags
+    ld d, a
+    ld hl, wObjectPlayer
+    ld a, [hl+]
+    ld c, a
+    ld b, [hl]
+    ; Check in which direction we are moving
+    bit 7, d
+    jr nz, .moveLeft
+
+.moveRight:
+    ; Moving right (positive)
+    inc b
+    push de
+    call tileFlagsAt
+    pop de
+    ; Check the solid attribute
+    bit 3, a
+    jr nz, .solidRight
+    ; If it is not solid, keep moving
+    dec d
+    jr nz, .moveRight
+    jr .return
+.solidRight:
+    ; If it is solid, go back
+    dec b
+    jr .solid
+
+.moveLeft:
+    ; Moving left (negative)
+    dec b
+    push de
+    call tileFlagsAt
+    pop de
+    ; Check the solid attribute
+    bit 3, a
+    jr nz, .solidLeft
+    ; Keep moving
+    inc d
+    jr nz, .moveLeft
+    jr .return
+.solidLeft:
+    ; Go back
+    inc b
+
+.solid:
+    ; Shared collision code between left/right movement
+    ; If we have hit something we want to round to that pixel and reset the
+    ; speed
+    xor a, a
+    ldh [hPlayerRemX], a
+    ld hl, wPlayerSpeedX
+    ld [hl+], a
+    ld [hl+], a
+.return:
+    ; Save the new X position and return
+    ld a, b
     ld [wObjectPlayer + OAMA_X], a
     ret
 
@@ -86,136 +213,6 @@ PhysicsMovePlayer::
     ld a, h
     or a, a
     jp nz, moveX
-    ret
-
-
-; (pos: bc) => a <pos: bc>
-tile_flags_at:
-    ; top-left
-    ; player hitbox has an offset of 1, 3
-    inc b
-    inc c
-    inc c
-    inc c
-    call tile_get_addr
-    call tile_get_attr
-    push af
-
-    ; top-right
-    ld a, b
-    and a, $07
-    ; hitbox width is 6, so no need to check if x%8 < 3
-    cp a, 3
-    jr c, .bottom
-    inc l
-    call tile_get_attr
-    pop de
-    or a, d
-    push af
-
-    ; bottom-right
-    ld a, c
-    and a, $07
-    ; hitbox height is 5 so no need to check if y%8 < 4
-    cp a, 4
-    jr c, .return
-    ld de, $20
-    add hl, de
-    call tile_get_attr
-    pop de
-    or a, d
-    push af
-
-    ; bottom-left
-    dec l
-    call tile_get_attr
-    pop de
-    or a, d
-    push af
-
-.return:
-    ; reset position
-    dec b
-    dec c
-    dec c
-    dec c
-    pop af
-    ret
-
-.bottom:
-    ; bottom (edge case with no left/right difference)
-    ld a, c
-    and a, $07
-    ; hitbox height is 5 so no need to check if y%8 < 4
-    cp a, 4
-    jr c, .return
-    ld de, $20
-    add hl, de
-    call tile_get_attr
-    pop de
-    or a, d
-    push af
-    jr .return
-
-
-; (amount: a) => void
-move_x:
-    ld d, a
-    MV8 b, [wObjectPlayer + OAM_X]
-    MV8 c, [wObjectPlayer + OAM_Y]
-    JRN8 d, .neg
-
-    ; d > 0
-.pos:
-    inc b
-    push de
-    call tile_flags_at
-    pop de
-    bit 3, a ; solid
-    jr nz, .pos_solid
-    dec d
-    jr nz, .pos
-    jr .return
-
-.pos_solid:
-    dec b
-.solid:
-    MV0 [hPlayerRemX]
-    ld hl, 0
-    ST16 wPlayerSpeedX, hl
-.return:
-    MV8 [wObjectPlayer + OAM_X], b
-    ret
-
-    ; d < 0
-.neg:
-    dec b
-    push de
-    call tile_flags_at
-    pop de
-    bit 3, a ; solid
-    jr nz, .neg_solid
-    inc d
-    jr nz, .neg
-    jr .return
-
-.neg_solid:
-    inc b
-    jr .solid
-
-
-; (spd_x: hl) => void
-physics_move::
-    ; -- [x] get move amount
-    ld bc, hPlayerRemX
-    ld d, 0
-    MV8 e, [bc]
-    add hl, de
-    MV8 [bc], l
-
-    ld a, h
-    cp a, d
-    call nz, move_x
     ret
 
 
