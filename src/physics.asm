@@ -1,4 +1,5 @@
 include "hardware.inc"
+include "physics.inc"
 
 section "Physics ROM", rom0
 
@@ -6,6 +7,7 @@ section "Physics ROM", rom0
 ; Resets the physics variables
 PhysicsLoad::
     xor a, a
+    ldh [hPhysicsFlags], a
     ldh [hPlayerRemX], a
     ldh [hPlayerRemY], a
     ret
@@ -160,7 +162,10 @@ PhysicsMovePlayerX::
     bit 7, h
     jr nz, .moveLeft
 
-.moveRight:
+    ; There seems to be a bug in the original source code that makes it do one
+    ; more step than it needs to. We replicate that bug here
+    inc h
+.rightLoop:
     ; Moving right (positive)
     inc b
     push hl
@@ -171,7 +176,7 @@ PhysicsMovePlayerX::
     jr nz, .solidRight
     ; If it is not solid, keep moving
     dec h
-    jr nz, .moveRight
+    jr nz, .rightLoop
     jr .return
 .solidRight:
     ; If it is solid, go back
@@ -179,6 +184,9 @@ PhysicsMovePlayerX::
     jr .solid
 
 .moveLeft:
+    ; Replicate bug
+    dec h
+.leftLoop:
     ; Moving left (negative)
     dec b
     push hl
@@ -189,7 +197,7 @@ PhysicsMovePlayerX::
     jr nz, .solidLeft
     ; Keep moving
     inc h
-    jr nz, .moveLeft
+    jr nz, .leftLoop
     jr .return
 .solidLeft:
     ; Go back
@@ -235,7 +243,9 @@ PhysicsMovePlayerY::
     bit 7, h
     jr nz, .moveUp
 
-.moveDown:
+    ; Replicate bug
+    inc h
+.downLoop
     ; Moving down (positive)
     inc c
     push hl
@@ -246,14 +256,21 @@ PhysicsMovePlayerY::
     jr nz, .solidDown
     ; Keep moving
     dec h
-    jr nz, .moveDown
+    jr nz, .downLoop
     jr .return
 .solidDown:
     ; Go back
     dec c
+    ; Update the ground flag
+    ldh a, [hPhysicsFlags]
+    set PHYSB_GROUND, a
+    ldh [hPhysicsFlags], a
     jr .solid
 
 .moveUp:
+    ; Replicate bug
+    dec h
+.upLoop:
     ; Moving up (negative)
     dec c
     push hl
@@ -264,11 +281,11 @@ PhysicsMovePlayerY::
     jr nz, .solidUp
     ; Keep moving
     inc h
-    jr nz, .moveUp
+    jr nz, .upLoop
     jr .return
 .solidUp:
     ; Go back
-    dec c
+    inc c
 
 .solid:
     ; Shared collision code between up/down
@@ -284,5 +301,6 @@ PhysicsMovePlayerY::
     ret
 
 section "Physics HRAM", hram
+hPhysicsFlags:: db
 hPlayerRemX: db
 hPlayerRemY: db

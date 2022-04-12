@@ -137,7 +137,7 @@ MapInit::
     ldh [rSCY], a
 
     ; Load the first map
-    ld a, 2
+    ld a, 0
     jp MapLoad
 
 

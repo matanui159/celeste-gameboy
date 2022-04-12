@@ -1,4 +1,5 @@
 include "hardware.inc"
+include "physics.inc"
 include "input.inc"
 
 section "Player ROM", rom0
@@ -30,6 +31,8 @@ PlayerLoad::
     ; Speed Y
     ld [hl+], a
     ld [hl+], a
+    ldh [hJumpBuffer], a
+    ldh [hGrace], a
     call PhysicsLoad
     pop hl
     ret
@@ -37,6 +40,38 @@ PlayerLoad::
 
 ;; Update the player object
 PlayerUpdate::
+    ; Update the jump buffer
+    ldh a, [hInputNext]
+    bit INB_A, a
+    ld a, 4
+    jr nz, .jumpBufferEnd
+    ; If the jump button wasn't pressed, decrement the jump-buffer unless it is
+    ; already zero
+    ldh a, [hJumpBuffer]
+    or a, a
+    jr z, .jumpBufferEnd
+    dec a
+.jumpBufferEnd:
+    ldh [hJumpBuffer], a
+
+    ; Update the grace period. Note that this is from the previous frame's
+    ; physics calculation but hopefully that shouldn't be a problem
+    ldh a, [hPhysicsFlags]
+    bit PHYSB_GROUND, a
+    ld a, 6
+    jr nz, .graceEnd
+    ; If the player is not on the ground, decrement grace period
+    ldh a, [hGrace]
+    or a, a
+    jr z, .graceEnd
+    dec a
+.graceEnd:
+    ldh [hGrace], a
+
+    ; Reset the physics flags before processing any physics
+    xor a, a
+    ldh [hPhysicsFlags], a
+
     ; -- move --
     ; Read the current speed X
     ld hl, wPlayerSpeedX
@@ -172,6 +207,23 @@ PlayerUpdate::
 
 .gravityAccel:
     call PhysicsAccelerate
+
+    ; -- jump --
+    ; Both the jump-buffer and the grace period have to be non-zero
+    ldh a, [hJumpBuffer]
+    or a, a
+    jr z, .jumpEnd
+    ldh a, [hGrace]
+    or a, a
+    jr z, .jumpEnd
+    ; -- normal jump --
+    ; Clear both variables and set the vertical speed to -2
+    xor a, a
+    ldh [hJumpBuffer], a
+    ldh [hGrace], a
+    ld hl, -(2.0 >> 8)
+.jumpEnd:
+
     ; Write new speed Y
     ld a, l
     ld b, h
@@ -187,3 +239,7 @@ PlayerUpdate::
 section "Player WRAM", wram0
 wPlayerSpeedX:: dw
 wPlayerSpeedY:: dw
+
+section "Player HRAM", hram
+hJumpBuffer: db
+hGrace: db
