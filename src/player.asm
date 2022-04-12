@@ -1,5 +1,4 @@
 include "hardware.inc"
-include "physics.inc"
 include "input.inc"
 
 section "Player ROM", rom0
@@ -54,10 +53,16 @@ PlayerUpdate::
 .jumpBufferEnd:
     ldh [hJumpBuffer], a
 
-    ; Update the grace period. Note that this is from the previous frame's
-    ; physics calculation but hopefully that shouldn't be a problem
-    ldh a, [hPhysicsFlags]
-    bit PHYSB_GROUND, a
+    ; Update the grace period
+    ; Get the player position...
+    ld hl, wObjectPlayer
+    ld a, [hl+]
+    ld c, a
+    ld b, [hl]
+    ; ... to find if there is solid below
+    inc c
+    call PhyscisPlayerTileFlags
+    bit 3, a
     ld a, 6
     jr nz, .graceEnd
     ; If the player is not on the ground, decrement grace period
@@ -68,16 +73,13 @@ PlayerUpdate::
 .graceEnd:
     ldh [hGrace], a
 
-    ; Reset the physics flags before processing any physics
-    xor a, a
-    ldh [hPhysicsFlags], a
-
     ; -- move --
     ; Read the current speed X
     ld hl, wPlayerSpeedX
     ld a, [hl+]
     ld h, [hl]
     ld l, a
+    ; TODO: slower acceleration in the air
 
     ; Deccelerate if the current absolute speed is larger than 1
     bit 7, h

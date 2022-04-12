@@ -1,5 +1,4 @@
 include "hardware.inc"
-include "physics.inc"
 
 section "Physics ROM", rom0
 
@@ -7,7 +6,6 @@ section "Physics ROM", rom0
 ; Resets the physics variables
 PhysicsLoad::
     xor a, a
-    ldh [hPhysicsFlags], a
     ldh [hPlayerRemX], a
     ldh [hPlayerRemY], a
     ret
@@ -67,7 +65,7 @@ PhysicsAccelerate::
 ;; @param bc: Player position
 ;; @returns a: Tile flags
 ;; @saved bc
-tileFlagsAt:
+PhyscisPlayerTileFlags::
     ; First we check the top-left tile, near the X/Y position
     ; The player has a hitbox offset of 1, 3
     inc b
@@ -169,7 +167,7 @@ PhysicsMovePlayerX::
     ; Moving right (positive)
     inc b
     push hl
-    call tileFlagsAt
+    call PhyscisPlayerTileFlags
     pop hl
     ; Check the solid attribute
     bit 3, a
@@ -190,7 +188,7 @@ PhysicsMovePlayerX::
     ; Moving left (negative)
     dec b
     push hl
-    call tileFlagsAt
+    call PhyscisPlayerTileFlags
     pop hl
     ; Check the solid attribute
     bit 3, a
@@ -245,11 +243,11 @@ PhysicsMovePlayerY::
 
     ; Replicate bug
     inc h
-.downLoop
+.downLoop:
     ; Moving down (positive)
     inc c
     push hl
-    call tileFlagsAt
+    call PhyscisPlayerTileFlags
     pop hl
     ; Check if solid
     bit 3, a
@@ -261,10 +259,6 @@ PhysicsMovePlayerY::
 .solidDown:
     ; Go back
     dec c
-    ; Update the ground flag
-    ldh a, [hPhysicsFlags]
-    set PHYSB_GROUND, a
-    ldh [hPhysicsFlags], a
     jr .solid
 
 .moveUp:
@@ -274,7 +268,7 @@ PhysicsMovePlayerY::
     ; Moving up (negative)
     dec c
     push hl
-    call tileFlagsAt
+    call PhyscisPlayerTileFlags
     pop hl
     ; Check if solid
     bit 3, a
@@ -300,7 +294,7 @@ PhysicsMovePlayerY::
     ld [wObjectPlayer + OAMA_Y], a
     ret
 
+
 section "Physics HRAM", hram
-hPhysicsFlags:: db
 hPlayerRemX: db
 hPlayerRemY: db
