@@ -91,9 +91,6 @@ VideoDraw::
     ldh a, [c]
     cp a, b
     jr c, .loop
-    ; We reset the timer so we can measure how long updates take
-    xor a, a
-    ldh [rDIV], a
     ret
 
 

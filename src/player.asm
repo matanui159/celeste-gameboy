@@ -108,5 +108,5 @@ PlayerUpdate::
     ret
 
 
-section "player_wram", wram0
+section "Player WRAM", wram0
 wPlayerSpeedX:: dw

@@ -232,6 +232,57 @@ MapTileAttributes::
     ret
 
 
+;; Updates a tile in the map
+;; @param a: Tile ID
+;; @param l: Tile position
+MapTileUpdate::
+    ld h, high(wMapTiles)
+    ld [hl], a
+    ; Save A for later
+    push af
+
+    ; Figure out the address in VRAM
+    ; The virtual screen width is twice that of the map so we have to multiply
+    ; Y by 2 (adding it an extra time)
+    ld h, high(_SCRN0)
+    ld b, 0
+    ld a, l
+    and a, $f0
+    ld c, a
+    add hl, bc
+    ld b, h
+    ld c, l
+
+    ; Find the end of the update queue (RET)
+    ; We subtract 5 so that the first iteration can add 5
+    ld hl, wUpdateQueue - 5
+    ld de, 5
+    ld a, OP_RET
+.findLoop:
+    ; Each copy takes 5 bytes so we can skip over 5 bytes at a time
+    add hl, de
+    cp a, [hl]
+    jr nz, .findLoop
+
+    ; Insert code to update it in VRAM during the next V-blank
+    ; ld a, <Tile ID>
+    ld a, OP_LD_A_D8
+    ld [hl+], a
+    pop af
+    ld [hl+], a
+    ; ld [<VRAM address>], a
+    ld a, OP_LD_A16_A
+    ld [hl+], a
+    ; Low byte first (little-endian)
+    ld a, c
+    ld [hl+], a
+    ld a, b
+    ld [hl+], a
+    ; ret
+    ld [hl], OP_RET
+    ret
+
+
 section fragment "VBlank", rom0
 VBlankMap:
     call wUpdateQueue
@@ -245,4 +296,3 @@ wMapTiles:: ds MAP_X_B * MAP_Y_B
 wMapAttrs:: ds MAP_X_B * MAP_Y_B
 ; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`
 wUpdateQueue: ds MAP_UPDATES * 5 + 1
-
