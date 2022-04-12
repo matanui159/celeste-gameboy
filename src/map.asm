@@ -107,7 +107,7 @@ MapLoad::
     or a, a
     jr nz, .attrCopyLoop
 
-    ; Restor the VRAM bank, enable LCD and return, register A is already zero
+    ; Restore the VRAM bank, enable LCD and return, register A is already zero
     ; from above
     ldh [rVBK], a
     ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
@@ -117,9 +117,6 @@ MapLoad::
 
 ;; Initializes the map rendering and update routines
 MapInit::
-    ; COMPATIBILITY: call the old init function
-    ; call map_init
-
     ; Clear out the tiles in screen 0
     ld hl, _SCRN0
     ld de, SCRN_VX_B * SCRN_VY_B
@@ -140,7 +137,7 @@ MapInit::
     ldh [rSCY], a
 
     ; Load the first map
-    xor a, a
+    ld a, 2
     jp MapLoad
 
 

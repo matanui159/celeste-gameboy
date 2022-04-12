@@ -11,7 +11,7 @@ RandomInit::
     ret
 
 
-; @returns a: A random number
+;; @returns a: A random number
 Random::
     ld hl, wState
     ; ba = [hl+]

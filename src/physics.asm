@@ -7,6 +7,7 @@ section "Physics ROM", rom0
 PhysicsLoad::
     xor a, a
     ldh [hPlayerRemX], a
+    ldh [hPlayerRemY], a
     ret
 
 
@@ -92,6 +93,7 @@ tileFlagsAt:
     or a, d
     push af
 
+.skipRight:
     ; Check the bottom-right tile (1 down)
     ; The hitbox height is 5 so we only need to check this if Y % 8 >= 4
     ld a, c
@@ -108,7 +110,6 @@ tileFlagsAt:
     or a, d
     push af
 
-.skipRight
     ; Check the bottom-left tile (1 to the left)
     ; We have to check left/right differences again because we may jump here
     ; from the top-right check
@@ -134,30 +135,42 @@ tileFlagsAt:
     ret
 
 
-;; @param a: Amount
-moveX:
+;; @param bc: Speed X
+PhysicsMovePlayerX::
+    ; -- [x] get move amount --
+    ; We add the remainder to the speed, and use the high byte to move the
+    ; player. The low byte gets saved back as a remainder.
+    ldh a, [hPlayerRemX]
+    ld l, a
+    ld h, 0
+    add hl, bc
+    ld a, l
+    ldh [hPlayerRemX], a
+    ; If the movement amount is zero we don't move at all
+    ld a, h
+    or a, a
+    ret z
+
     ; Get the position
-    ; We move A to D because we need A for getting the flags
-    ld d, a
-    ld hl, wObjectPlayer
-    ld a, [hl+]
+    ld a, [wObjectPlayer + OAMA_X]
+    ld b, a
+    ld a, [wObjectPlayer + OAMA_Y]
     ld c, a
-    ld b, [hl]
     ; Check in which direction we are moving
-    bit 7, d
+    bit 7, h
     jr nz, .moveLeft
 
 .moveRight:
     ; Moving right (positive)
     inc b
-    push de
+    push hl
     call tileFlagsAt
-    pop de
+    pop hl
     ; Check the solid attribute
     bit 3, a
     jr nz, .solidRight
     ; If it is not solid, keep moving
-    dec d
+    dec h
     jr nz, .moveRight
     jr .return
 .solidRight:
@@ -168,14 +181,14 @@ moveX:
 .moveLeft:
     ; Moving left (negative)
     dec b
-    push de
+    push hl
     call tileFlagsAt
-    pop de
+    pop hl
     ; Check the solid attribute
     bit 3, a
     jr nz, .solidLeft
     ; Keep moving
-    inc d
+    inc h
     jr nz, .moveLeft
     jr .return
 .solidLeft:
@@ -198,23 +211,78 @@ moveX:
     ret
 
 
-;; @param bc: Speed X
-PhysicsMovePlayer::
-    ; -- [x] get move amount --
-    ; We add the remainder to the speed, and use the high byte to move the
-    ; player. The low byte gets saved back as a remainder.
-    ldh a, [hPlayerRemX]
-    ld l, a
+;; @param bc: Speed Y
+PhysicsMovePlayerY::
+    ; -- [y] get move amount --
+    ; Figure out the movement amount and new remainder
+    ldh a, [hPlayerRemY]
     ld h, 0
+    ld l, a
     add hl, bc
     ld a, l
-    ldh [hPlayerRemX], a
-    ; If it is non-zero, we move in the X direction
+    ldh [hPlayerRemY], a
+    ; If the movement is zero, don't move at all
     ld a, h
     or a, a
-    jp nz, moveX
-    ret
+    ret z
 
+    ; Get the position
+    ld a, [wObjectPlayer + OAMA_X]
+    ld b, a
+    ld a, [wObjectPlayer + OAMA_Y]
+    ld c, a
+    ; Check which direction we're moving
+    bit 7, h
+    jr nz, .moveUp
+
+.moveDown:
+    ; Moving down (positive)
+    inc c
+    push hl
+    call tileFlagsAt
+    pop hl
+    ; Check if solid
+    bit 3, a
+    jr nz, .solidDown
+    ; Keep moving
+    dec h
+    jr nz, .moveDown
+    jr .return
+.solidDown:
+    ; Go back
+    dec c
+    jr .solid
+
+.moveUp:
+    ; Moving up (negative)
+    dec c
+    push hl
+    call tileFlagsAt
+    pop hl
+    ; Check if solid
+    bit 3, a
+    jr nz, .solidUp
+    ; Keep moving
+    inc h
+    jr nz, .moveUp
+    jr .return
+.solidUp:
+    ; Go back
+    dec c
+
+.solid:
+    ; Shared collision code between up/down
+    xor a, a
+    ldh [hPlayerRemY], a
+    ld hl, wPlayerSpeedY
+    ld [hl+], a
+    ld [hl+], a
+.return:
+    ; Save the new Y position
+    ld a, c
+    ld [wObjectPlayer + OAMA_Y], a
+    ret
 
 section "Physics HRAM", hram
 hPlayerRemX: db
+hPlayerRemY: db
