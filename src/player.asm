@@ -219,10 +219,18 @@ PlayerUpdate::
     or a, a
     jr z, .jumpEnd
     ; -- normal jump --
-    ; Clear both variables and set the vertical speed to -2
+    ; Clear both variables
     xor a, a
     ldh [hJumpBuffer], a
     ldh [hGrace], a
+    ; Spawn a smoke particle at offset 0,4
+    ld hl, wObjectPlayer
+    ld a, [hl+]
+    add a, 4
+    ld c, a
+    ld b, [hl]
+    call SmokeSpawn
+    ; Set the vertical speed to -2
     ld hl, -(2.0 >> 8)
 .jumpEnd:
 
