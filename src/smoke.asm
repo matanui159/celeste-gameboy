@@ -1,16 +1,14 @@
 include "hardware.inc"
 
+; Equal to the amount allocated in the OAM segment
 def SMOKE_COUNT equ 9
 
 section "Smoke ROM", rom0
 
 
-; TODO: this code is a mess LMAO
-
-
 ;; Initializes the smoke particle system
 SmokeInit::
-    ld a, low(wObjectPlayer) - 1
+    ld a, low(wObjectsSmoke.end)
     ldh [hNextSmoke], a
     ret
 
@@ -27,43 +25,56 @@ SmokeSpawn::
     ld h, high(wObjectsSmoke)
     ldh a, [hNextSmoke]
     ld l, a
+    dec l
     ; Set random flip flags and palette
     ld a, d
     and a, OAMF_XFLIP | OAMF_YFLIP
     or a, 1
     ld [hl-], a
     ; Set tile
-    ld a, 29
+    ld a, 30
     ld [hl-], a
     ; Set position
-    ; Use the lowest two random bits for X
+    ; Use the lowest random bit for X
+    ; We use an offset of -1<=x<=0 with which the random remainder below becomes
+    ; -1<=x<1
     ld a, d
-    and a, $03
+    and a, $01
     dec a
     add a, b
     ld [hl-], a
-    ; Use the next two random bits for Y
+    ; Use the next random bit for Y
     ld a, d
     rra
-    rra
-    and a, $03
+    and a, $01
     dec a
     add a, c
-    ld [hl-], a
+    ld [hl], a
 
     ; Save the L address for the next smoke particle, wrap it with the lowest
     ; address
     ld a, l
     cp a, low(wObjectsSmoke)
-    jr nc, .saveSmoke
-    ld a, low(wObjectPlayer) - 1
+    jr nz, .saveSmoke
+    ld a, low(wObjectsSmoke.end)
 .saveSmoke:
     ldh [hNextSmoke], a
 
-    ; Setup address for writing meta data
-    ld h, high(wSmokeData)
-    inc l
-    ; Write X speed from new random data
+    ; Swap to object data
+    inc h
+    ; Write X and Y remainders using random data
+    push hl
+    call Random
+    pop hl
+    ld [hl+], a
+    push hl
+    call Random
+    pop hl
+    ld [hl+], a
+    ; Setup tile counter
+    ld a, 5
+    ld [hl+], a
+    ; Write X speed from even more random data
     push hl
     call Random
     pop hl
@@ -71,11 +82,6 @@ SmokeSpawn::
     and a, $3f
     add a, 0.3 >> 8
     ld [hl+], a
-    ; Clear X fractional remainder
-    xor a, a
-    ld [hl+], a
-    ; Set tile counter to 5
-    ld [hl], 5
     ret
 
 
@@ -89,50 +95,61 @@ SmokeUpdate::
     ld a, [hl-]
     or a, a
     jr z, .next
+    dec l
 
-    ; Update X movement using the speed and remainder
-    ; Get the current X position and remainder
+    ; Update Y movement using a fixed speed of -0.1 and Y remainder
+    ; Read the Y position and remainder
     ld b, [hl]
-    ld h, high(wSmokeData)
-    ld a, [hl-]
-    ld c, a
-    ; Get the X speed, saving L in register A
-    ld a, l
-    ld l, [hl]
-    ld h, 0
-    ; Calculate new X
+    ; INC swaps to the objects data, DEC swaps back
+    inc h
+    ld c, [hl]
+    ; Add the speed, store into AC
+    ld d, h
+    ld e, l
+    ld hl, -(0.1 >> 8)
     add hl, bc
-    ld b, h
+    ld a, h
     ld c, l
-    ; Save new X
-    ld h, high(wObjectsSmoke)
-    ld l, a
-    inc l
-    ld [hl], b
-    ld h, high(wSmokeData)
-    ld a, c
+    ; Write the new Y and remainder
+    ld h, d
+    ld l, e
+    ld [hl], c
+    dec h
     ld [hl+], a
 
-    ; Update tile ID using counter
+    ; Do the same for X movement, but using the random speed
+    ; Load X position
+    ; We also save HL now, while it is at the correct address for
+    ; writing X later
+    ld d, h
+    ld e, l
+    ld b, [hl]
+    inc h
+    ld a, [hl+]
+    ld c, a
+    ; Load random X speed
+    inc l
+    ld l, [hl]
+    ld h, 0
+    ; Add speed, saving into BA
+    add hl, bc
+    ld b, h
+    ld a, l
+    ; Save X position
+    ld h, d
+    ld l, e
+    ld [hl], b
+    inc h
+    ld [hl+], a
+
+    ; Update tile ID using the counter
     ld b, [hl]
     dec b
     jr nz, .counterEnd
     ; If the counter is 0, increment the tile ID and reset the counter
-    ld h, high(wObjectsSmoke)
+    dec h
     ld a, [hl]
     inc a
-    ; We reuse this counter to also increment Y, if two tiles have changed, (=31)
-    ; then we move up 1 pixel
-    ; TODO: I would feel better about this if we just had a remainder for Y as
-    ;       well
-    cp a, 31
-    jr nz, .upEnd
-    dec l
-    dec l
-    dec [hl]
-    inc l
-    inc l
-.upEnd:
     ; Check if we reach tile 32
     cp a, 32
     jr c, .tileEnd
@@ -144,25 +161,21 @@ SmokeUpdate::
     inc l
 .tileEnd:
     ld [hl], a
-    ld h, high(wSmokeData)
+    inc h
     ld b, 5
 .counterEnd:
     ld a, b
     ld [hl-], a
-    ld h, high(wObjectsSmoke)
+    dec h
 
 .next:
     ld a, l
     add a, 3
     ld l, a
-    cp a, low(wObjectPlayer)
+    cp a, low(wObjectsSmoke.end)
     jr c, .loop
     ret
 
-
-section "Smoke WRAM", wram0, align[8, $04]
-; Offset to align with the smoke objects
-wSmokeData: ds SMOKE_COUNT * sizeof_OAM_ATTRS
 
 section "Smoke HRAM", hram
 hNextSmoke: db

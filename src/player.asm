@@ -1,6 +1,9 @@
 include "hardware.inc"
 include "input.inc"
 
+; Flag set if the player was on the ground last frame
+def PLAYB_PREV_GROUND equ 0
+
 section "Player ROM", rom0
 
 
@@ -30,6 +33,7 @@ PlayerLoad::
     ; Speed Y
     ld [hl+], a
     ld [hl+], a
+    ldh [hFlags], a
     ldh [hJumpBuffer], a
     ldh [hGrace], a
     call PhysicsLoad
@@ -63,8 +67,12 @@ PlayerUpdate::
     inc c
     call PhyscisPlayerTileFlags
     bit 3, a
+    ; Save a flag into D
+    ld d, 1 << PLAYB_PREV_GROUND
     ld a, 6
     jr nz, .graceEnd
+    ; Clear the above flag
+    ld d, 0
     ; If the player is not on the ground, decrement grace period
     ldh a, [hGrace]
     or a, a
@@ -72,6 +80,27 @@ PlayerUpdate::
     dec a
 .graceEnd:
     ldh [hGrace], a
+
+    ; Compare the ground flag with the previous frame
+    ldh a, [hFlags]
+    cpl
+    and a, d
+    ld e, a
+    ; Update the flag for the next frame
+    ldh a, [hFlags]
+    and a, ~(1 << PLAYB_PREV_GROUND)
+    or a, d
+    ldh [hFlags], a
+    ; Check if we have just landed
+    bit PLAYB_PREV_GROUND, e
+    jr z, .landEnd
+    ; If we have just landed, spawn a smoke particle at offset 0,+4
+    ; We already have the player positon in BC with an offset of 0,+1 from above
+    ld a, c
+    add a, 3
+    ld c, a
+    call SmokeSpawn
+.landEnd:
 
     ; -- move --
     ; Read the current speed X
@@ -251,5 +280,6 @@ wPlayerSpeedX:: dw
 wPlayerSpeedY:: dw
 
 section "Player HRAM", hram
+hFlags: db
 hJumpBuffer: db
 hGrace: db

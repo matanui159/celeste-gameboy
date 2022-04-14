@@ -25,6 +25,11 @@ ObjectsInit::
     ld de, wObjects.end - wObjectSnow
     call MemoryClear
 
+    ; Clear extra object data
+    ld hl, wObjectsData
+    ld de, wObjectsData.end - wObjectsData
+    call MemoryClear
+
     ; Copy over the DMA function to HRAM
     ld hl, hObjectDMA
     ld bc, ObjectDMA
@@ -40,10 +45,18 @@ VBlankObjects:
     call hObjectDMA
 
 
-section "Object WRAM", wram0, align[8]
+; These sections have specific addresses so we can keep the space between them
+; empty
+section "Objects WRAM", wram0[$c000]
 wObjectSnow:: ds sizeof_OAM_ATTRS
 wObjectsSmoke:: ds 9 * sizeof_OAM_ATTRS
+.end::
 wObjectPlayer:: ds sizeof_OAM_ATTRS
 wObjectsFruit:: ds 3 * sizeof_OAM_ATTRS
 wObjects:: ds 26 * sizeof_OAM_ATTRS
+.end::
+
+; Extra data for whatever purpose the object desires
+section "Objects data", wram0[$c100]
+wObjectsData:: ds OAM_COUNT * sizeof_OAM_ATTRS
 .end::
