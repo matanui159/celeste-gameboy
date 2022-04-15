@@ -25,16 +25,16 @@ ObjectsInit::
     ld de, wObjects.end - wObjectSnow
     call MemoryClear
 
-    ; Clear extra object data
-    ld hl, wObjectsData
-    ld de, wObjectsData.end - wObjectsData
-    call MemoryClear
-
     ; Copy over the DMA function to HRAM
-    ld hl, hObjectDMA
-    ld bc, ObjectDMA
-    ld de, hObjectDMA.end - hObjectDMA
-    jp MemoryCopy
+    ; Instead of using MemoryCopy we can make it faster with LDH and REPT
+    ld c, low(hObjectDMA)
+    ld hl, ObjectDMA
+rept hObjectDMA.end - hObjectDMA
+    ld a, [hl+]
+    ldh [c], a
+    inc c
+endr
+    ret
 
 
 section fragment "VBlank", rom0

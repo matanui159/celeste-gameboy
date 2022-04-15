@@ -68,7 +68,7 @@ static void palettes_gen(
 
 int main(void) {
     gen_load();
-    printf("section \"Generated palettes\", rom0\n");
+    printf("section \"Generated palettes\", romx, bank[1]\n");
     palettes_gen("GenPalsBG", sizeof(gen_bg_palettes), gen_bg_palettes);
     palettes_gen("GenPalsOBJ", sizeof(gen_obj_palettes), gen_obj_palettes);
     return 0;

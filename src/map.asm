@@ -34,6 +34,27 @@ TileLoad:
     ret
 
 
+;; A faster copy routine specifically for copying rows from WRAM to VRAM
+;; @param bc: Source address to copy from
+;; @saved bc
+MapCopy:
+    ld hl, _SCRN0
+    ld de, MAP_X_B
+.loop:
+    ; Copy over one row to VRAM
+rept MAP_X_B
+    ld a, [bc]
+    inc c
+    ld [hl+], a
+endr
+    ; The VRAM screen is double the size of the map
+    add hl, de
+    ; If the last increment ended with 0, we have rached the end of the map
+    ; Surprisingly, 16-bit addition doesn't overwrite the Z flag
+    jr nz, .loop
+    ret
+
+
 ;; @param a: Map ID
 MapLoad::
     ; Generate the map address before A gets overwritten. Each map is
@@ -74,41 +95,18 @@ MapLoad::
 
     ; Disable LCD and copy over the map to VRAM
     call VideoDisable
-    ld hl, _SCRN0
     ld bc, wMapTiles
-    ld de, MAP_X_B
-.tileCopyLoop:
-    ; Copy over a row of tiles
-    call MemoryCopy
-    ; The VRAM screen with is double that of the map, so we increment it further
-    ; here before copying more tiles
-    ld de, MAP_Y_B
-    add hl, de
-    ; Check if C is back to 0
-    ld a, c
-    or a, a
-    jr nz, .tileCopyLoop
-
-    ; Copy over the attributes in a similar fashion, using VRAM bank 1
+    call MapCopy
+    ; Switch to VRAM bank 1 for the attributes
     ld a, 1
     ldh [rVBK], a
-    ld hl, _SCRN0
-    ; We don't have to setup BC because it's already incremented to the next
-    ; address
-    ld de, MAP_X_B
-.attrCopyLoop:
-    ; Copy over a row of attributes
-    call MemoryCopy
-    ; Increment the screen address
-    ld de, MAP_Y_B
-    add hl, de
-    ; Check C and repeat
-    ld a, c
-    or a, a
-    jr nz, .attrCopyLoop
+    ; BC is saved in the above copy call, just have to increment to get the
+    ; a pointer to map attributes
+    inc b
+    call MapCopy
 
-    ; Restore the VRAM bank, enable LCD and return, register A is already zero
-    ; from above
+    ; Restore the VRAM bank, enable LCD and return
+    xor a, a
     ldh [rVBK], a
     ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a
