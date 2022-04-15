@@ -165,6 +165,29 @@ PlayerUpdate::
 
 .moveAccel:
     call PhysicsAccelerate
+
+    ; -- facing --
+    ; We handle this now while we still have the speed in the registers
+    ; We skip this and keep the old facing value if the speed is 0
+    ld a, h
+    or a, a
+    jr nz, .updateFacing
+    ld a, l
+    or a, a
+    jr z, .facingEnd
+.updateFacing:
+    ; Clear the old flip flag
+    ld a, [wObjectPlayer + OAMA_FLAGS]
+    and a, ~OAMF_XFLIP
+    ; Set the flip flag if the speed is negative
+    bit 7, h
+    jr z, .facingRight
+    set OAMB_XFLIP, a
+.facingRight:
+    ld [wObjectPlayer + OAMA_FLAGS], a
+.facingEnd:
+
+    ; Finish updating movement from above
     ; Write the new speed X
     ld a, l
     ld b, h
