@@ -97,17 +97,24 @@ MapLoad::
     call VideoDisable
     ld bc, wMapTiles
     call MapCopy
+
+    ; Check if we are on CGB to see if we have to copy attributes
+    ldh a, [hMainBoot]
+    cp a, BOOTUP_A_CGB
+    jr nz, .vramCopyEnd
     ; Switch to VRAM bank 1 for the attributes
     ld a, 1
     ldh [rVBK], a
-    ; BC is saved in the above copy call, just have to increment to get the
+    ; BC is saved in the above copy call, just have to increment to get
     ; a pointer to map attributes
     inc b
     call MapCopy
-
-    ; Restore the VRAM bank, enable LCD and return
+    ; Restore the VRAM bank
     xor a, a
     ldh [rVBK], a
+.vramCopyEnd:
+
+    ; Enable LCD and return
     ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a
     ret
@@ -119,6 +126,11 @@ MapInit::
     ld hl, _SCRN0
     ld de, SCRN_VX_B * SCRN_VY_B
     call MemoryClear
+
+    ; Check if we have to clear attributes
+    ldh a, [hMainBoot]
+    cp a, BOOTUP_A_CGB
+    jr nz, .clearEnd
     ; Swap to VRAM bank 1 and clear out the attributes
     ld a, 1
     ldh [rVBK], a
@@ -127,6 +139,7 @@ MapInit::
     call MemoryClear
     ; Swap back to VRAM bank 0 using effect from MemoryClear
     ldh [rVBK], a
+.clearEnd:
 
     ; Setup the scroll registers
     ld a, -16

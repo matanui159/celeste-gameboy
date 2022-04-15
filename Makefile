@@ -1,14 +1,15 @@
 CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -Weverything
 LINK_FLAGS = -w
-FIX_FLAGS = -vCj -t CELESTE -n 0x10 # ver. 1.0
+FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
 BINJGB_FLAGS = -C 1
+# BINJGB_FLAGS = -P 72 --force-dmg
 DEBUG_FLAGS = -p
 
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
 	bin/gen/gen_tiles.obj \
-	bin/gen/gen_pals.obj \
+	bin/gen/gen_palettes.obj \
 	bin/gen/gen_attrs.obj \
 	bin/gen/gen_maps.obj \
 	bin/src/main.obj \

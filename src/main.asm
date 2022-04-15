@@ -10,6 +10,8 @@ section "Main ROM", rom0
 ;; The main entry point
 Main:
     di
+    ; Save the value A from the BIOS to later detect if we are CGB or DMG
+    ldh [hMainBoot], a
     ; Setup stack to point to the top of memory
     ld sp, $e000
 
@@ -35,3 +37,7 @@ Main:
     ld b, 2
     call VideoDraw
     jr .loop
+
+
+section "Main HRAM", hram
+hMainBoot:: db

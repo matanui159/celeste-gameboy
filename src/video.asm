@@ -58,17 +58,33 @@ VideoInit::
     ld de, GenTiles.end - GenTiles
     call MemoryCopy
 
-    ; Copy over the palettes
+    ; Check if we are on CGB or DMG
+    ldh a, [hMainBoot]
+    cp a, BOOTUP_A_CGB
+    jr z, .cgbPalettes
+
+    ; Setup DMG palettes
+    ; The palette we use is inverse of the default DMG palette where 11 is white
+    ; and 00 is black.
+    ld a, %00_01_10_11
+    ldh [rBGP], a
+    ldh [rOBP0], a
+    ldh [rOBP1], a
+
+.cgbPalettes:
+    ; Copy over the CGB palettes
     ld c, low(rBCPS)
     ld a, $00
-    ld hl, GenPalsBG
-    ld b, GenPalsBG.end - GenPalsBG
+    ld hl, GenPalettesBG
+    ld b, GenPalettesBG.end - GenPalettesBG
     call PaletteCopy
 
     ld a, $00
-    ld hl, GenPalsOBJ
-    ld b, GenPalsOBJ.end - GenPalsOBJ
+    ld hl, GenPalettesOBJ
+    ld b, GenPalettesOBJ.end - GenPalettesOBJ
     call PaletteCopy
+
+.palettesEnd:
 
     ; Set 1 frame so it won't draw until the first `VideoDraw` call
     ld a, 1

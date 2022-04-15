@@ -13,9 +13,9 @@ static const uint32_t palette_colors[] = {
     0xffa300,
     0xffec27,
     0x00e436,
-    0x29adff, 
+    0x29adff,
     0x83769c,
-    0xff77a8, 
+    0xff77a8,
     0xffccaa
 };
 
@@ -42,12 +42,12 @@ static uint8_t palette_get_color(uint8_t shade) {
 
 static void palettes_gen(
     const char *label,
-    size_t pal_size,
+    size_t palette_size,
     const gen_palette_t *palettes
 ) {
     printf("%s::\n", label);
-    size_t pal_count = pal_size / sizeof(gen_palette_t);
-    for (size_t p = 0; p < pal_count; p += 1) {
+    size_t palette_count = palette_size / sizeof(gen_palette_t);
+    for (size_t p = 0; p < palette_count; p += 1) {
         const gen_palette_t *pal = &palettes[p];
         printf("    dw ");
         for (size_t c = 0; c < 4; c += 1) {
@@ -69,7 +69,7 @@ static void palettes_gen(
 int main(void) {
     gen_load();
     printf("section \"Generated palettes\", romx, bank[1]\n");
-    palettes_gen("GenPalsBG", sizeof(gen_bg_palettes), gen_bg_palettes);
-    palettes_gen("GenPalsOBJ", sizeof(gen_obj_palettes), gen_obj_palettes);
+    palettes_gen("GenPalettesBG", sizeof(gen_bg_palettes), gen_bg_palettes);
+    palettes_gen("GenPalettesOBJ", sizeof(gen_obj_palettes), gen_obj_palettes);
     return 0;
 }
