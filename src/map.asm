@@ -57,6 +57,9 @@ endr
 
 ;; @param a: Map ID
 MapLoad::
+    ; TODO: if this is called mid-update we should somehow skip or restart the
+    ;       update
+
     ; Generate the map address before A gets overwritten. Each map is
     ; page-aligned
     add a, high(GenMaps)
@@ -94,6 +97,7 @@ MapLoad::
     ld [wUpdateQueue], a
 
     ; Disable LCD and copy over the map to VRAM
+    ; TODO: on CGB we could use HDMA so we don't have to disable the screen
     call VideoDisable
     ld bc, wMapTiles
     call MapCopy

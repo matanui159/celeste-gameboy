@@ -12,10 +12,10 @@ PlayerLoad::
     call MapTilePosition
     push hl
     ld hl, wObjectPlayer
-    ; X
+    ; Y
     ld [hl], c
     inc l
-    ; Y
+    ; X
     ld [hl], b
     inc l
     ; Tile ID
