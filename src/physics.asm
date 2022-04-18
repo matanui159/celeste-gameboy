@@ -1,9 +1,10 @@
 include "hardware.inc"
+include "attrs.inc"
 
 section "Physics ROM", rom0
 
 
-; Resets the physics variables
+;; Resets the physics variables
 PhysicsLoad::
     xor a, a
     ldh [hPlayerRemX], a
@@ -14,50 +15,50 @@ PhysicsLoad::
 ;; Updates a value until it meets a target
 ;; This is called `appr` in the original source code, likely short for
 ;; appreciate.
-;; Unlike the Lua verison of this code, this only updates in one direction.
 ;;
 ;; @param hl: Current value
 ;; @param bc: Target value
 ;; @param de: Rate to increase or decrease by
 ;; @returns hl: New value
 PhysicsAccelerate::
-    ; Add to the value
-    add hl, de
-    ; Do a 16-bit signed compare between the new value and the target value,
-    ; store the result in A.
-    ; As part of this compare we use DE to be H and B with the high bit inverted
-    push de
-    ld a, h
-    xor a, $80
-    ld d, a
-    ld a, b
-    xor a, $80
-    ld e, a
+    ; Subtract the target value from HL so we can easily check if it is larger
+    ; or smaller (signed) by checking the sign bit
     ld a, l
     sub a, c
-    ld a, d
-    sbc a, e
-    rla
-    ; Check the sign of DE to see if we are accelerating or deccelerating
-    pop de
-    bit 7, d
-    jr nz, .deccelerate
+    ld l, a
+    ld a, h
+    sbc a, b
+    ld h, a
+    ; Check if we are smaller than the target value
+    bit 7, h
+    jr z, .deccelerate
 
-    ; When accelerating we set the value to the target if it is larger than the
-    ; target
-    bit 0, a
-    ret nz
+    ; If the current value is less than the target value we add to it
+    add hl, de
+    ; Check if we have gone too far
+    bit 7, h
+    jr nz, .return
     jr .equal
 
 .deccelerate:
-    ; When deccelerating we set the value to the target if it is smaller than
-    ; the target
-    bit 0, a
-    ret z
+    ; If the current value is greater than the target we subtract from it
+    ld a, l
+    sub a, e
+    ld l, a
+    ld a, h
+    sbc a, d
+    ld h, a
+    ; Check if we have gone too far
+    jr z, .return
 
 .equal:
-    ld h, b
-    ld l, c
+    ; If we are on one side of the target but adding/subtracting put us on the
+    ; other side, then we must set them equal. We do this by setting HL to 0
+    ; so the addition below sets it to BC.
+    ld hl, 0
+.return:
+    ; Undo the offset done by the target value
+    add hl, bc
     ret
 
 
@@ -170,7 +171,7 @@ PhysicsMovePlayerX::
     call PhyscisPlayerTileFlags
     pop hl
     ; Check the solid attribute
-    bit 3, a
+    bit ATTRB_SOLID, a
     jr nz, .solidRight
     ; If it is not solid, keep moving
     dec h
@@ -191,7 +192,7 @@ PhysicsMovePlayerX::
     call PhyscisPlayerTileFlags
     pop hl
     ; Check the solid attribute
-    bit 3, a
+    bit ATTRB_SOLID, a
     jr nz, .solidLeft
     ; Keep moving
     inc h
@@ -250,7 +251,7 @@ PhysicsMovePlayerY::
     call PhyscisPlayerTileFlags
     pop hl
     ; Check if solid
-    bit 3, a
+    bit ATTRB_SOLID, a
     jr nz, .solidDown
     ; Keep moving
     dec h
@@ -271,7 +272,7 @@ PhysicsMovePlayerY::
     call PhyscisPlayerTileFlags
     pop hl
     ; Check if solid
-    bit 3, a
+    bit ATTRB_SOLID, a
     jr nz, .solidUp
     ; Keep moving
     inc h

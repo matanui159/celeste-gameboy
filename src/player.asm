@@ -1,8 +1,6 @@
 include "hardware.inc"
 include "input.inc"
-
-; Flag set if the player was on the ground last frame
-def PLAYB_PREV_GROUND equ 0
+include "attrs.inc"
 
 section "Player ROM", rom0
 
@@ -33,7 +31,8 @@ PlayerLoad::
     ; Speed Y
     ld [hl+], a
     ld [hl+], a
-    ldh [hFlags], a
+    ldh [hGroundFlags], a
+    ldh [hGroundFlagsNext], a
     ldh [hJumpBuffer], a
     ldh [hGrace], a
     call PhysicsLoad
@@ -57,7 +56,7 @@ PlayerUpdate::
 .jumpBufferEnd:
     ldh [hJumpBuffer], a
 
-    ; Update the grace period
+    ; Update the ground flags
     ; Get the player position...
     ld hl, wObjectPlayer
     ld a, [hl+]
@@ -66,13 +65,22 @@ PlayerUpdate::
     ; ... to find if there is solid below
     inc c
     call PhyscisPlayerTileFlags
-    bit 3, a
-    ; Save a flag into D
-    ld d, 1 << PLAYB_PREV_GROUND
+    ; Save into HRAM and compare against the previous frame
+    ld d, a
+    ldh a, [hGroundFlags]
+    cpl
+    and a, d
+    ; We also save this in a register so we can quickly check it later
+    ld e, a
+    ldh [hGroundFlagsNext], a
+    ld a, d
+    ldh [hGroundFlags], a
+
+    ; Update the grace period
+    ; Check if we are on solid ground
+    bit ATTRB_SOLID, a
     ld a, 6
     jr nz, .graceEnd
-    ; Clear the above flag
-    ld d, 0
     ; If the player is not on the ground, decrement grace period
     ldh a, [hGrace]
     or a, a
@@ -81,18 +89,8 @@ PlayerUpdate::
 .graceEnd:
     ldh [hGrace], a
 
-    ; Compare the ground flag with the previous frame
-    ldh a, [hFlags]
-    cpl
-    and a, d
-    ld e, a
-    ; Update the flag for the next frame
-    ldh a, [hFlags]
-    and a, ~(1 << PLAYB_PREV_GROUND)
-    or a, d
-    ldh [hFlags], a
     ; Check if we have just landed
-    bit PLAYB_PREV_GROUND, e
+    bit ATTRB_SOLID, e
     jr z, .landEnd
     ; If we have just landed, spawn a smoke particle at offset 0,+4
     ; We already have the player positon in BC with an offset of 0,+1 from above
@@ -108,7 +106,16 @@ PlayerUpdate::
     ld a, [hl+]
     ld h, [hl]
     ld l, a
-    ; TODO: slower acceleration in the air
+
+    ; If the player is on the ground the acceleration is 0.6
+    ld de, 0.6 >> 8
+    ; Check if the player is in the air
+    ldh a, [hGroundFlags]
+    bit ATTRB_SOLID, a
+    jr nz, .moveAirEnd
+    ; If the player is in the air, the acceleration is 0.4
+    ld de, 0.4 >> 8
+.moveAirEnd:
 
     ; Deccelerate if the current absolute speed is larger than 1
     bit 7, h
@@ -125,7 +132,7 @@ PlayerUpdate::
 .moveDeccelNot1:
     ; If it is we decrement to 1.0
     ld bc, 1.0 >> 8
-    ld de, -(0.15 >> 8)
+    ld de, 0.15 >> 8
     jr .moveAccel
 .moveDeccelNeg:
     ; If the speed is negative the high byte must be anything but $ff
@@ -143,25 +150,16 @@ PlayerUpdate::
     bit INB_RIGHT, a
     jr z, .moveRightEnd
     ld bc, 1.0 >> 8
-    ld de, 0.6 >> 8
     jr .moveAccel
 .moveRightEnd:
     ; Accelerate left if the button is pressed
     bit INB_LEFT, a
     jr z, .moveLeftEnd
     ld bc, -(1.0 >> 8)
-    ld de, -(0.6 >> 8)
     jr .moveAccel
 .moveLeftEnd:
-
-    ; Deccelerate towards zero
-    bit 7, h
-    ld bc, 0
-    jr nz, .moveZeroNeg
-    ld de, -(0.6 >> 8)
-    jr .moveAccel
-.moveZeroNeg:
-    ld de, 0.6 >> 8
+    ; Otherwise deccelerate towards zero
+    ld bc, 0.0 >> 8
 
 .moveAccel:
     call PhysicsAccelerate
@@ -204,8 +202,9 @@ PlayerUpdate::
     ld a, [hl+]
     ld h, [hl]
     ld l, a
-    ; Set the max falling speed to 2.0
+    ; Set the max falling speed to 2.0 and gravity to 0.21
     ld bc, 2.0 >> 8
+    ld de, 0.21 >> 8
 
     ; Gravity is weaker if the absolute speed is <= 0.15
     bit 7, h
@@ -213,51 +212,24 @@ PlayerUpdate::
     ; The high byte must be 0
     ld a, h
     or a, a
-    jr nz, .gravLowEnd
+    jr nz, .gravityAccel
     ; The low byte must be <0.15
     ld a, l
     cp a, 0.15 >> 8
-    jr nc, .gravLowEnd
+    jr nc, .gravityAccel
     jr .gravLowAccel
 .gravLowNeg:
     ; The high byte must be $ff
     ld a, h
     inc a
-    jr nz, .gravLowEnd
+    jr nz, .gravityAccel
     ; The low byte must be > -0.15
     cp a, -(0.15 >> 8)
-    jr c, .gravLowEnd
+    jr c, .gravityAccel
 .gravLowAccel:
-    ; Set the gravity to 0.21 / 2
-    ld de, (0.21 / 2) >> 8
-    ; We don't have to check if the current speed is larger than the max speed
-    ; since we already know at most its 0.15
-    jr .gravityAccel
-.gravLowEnd:
-
-    ; If the Y speed is too high we have to deccelerate to the max fall speed
-    ; We do this because the `PhysicsAccelerate` function does not do it for
-    ; us (it made the code too complicated and is not needed most of the time).
-    ; We do a 16-bit compare by inverting the top bits so positive values are
-    ; larger than negative ones
-    ld a, h
-    xor a, $80
-    ld d, a
-    ld a, b
-    xor a, $80
-    ld e, a
-    ld a, l
-    sub a, c
-    ld a, d
-    sub a, e
-    jr c, .gravDeccelEnd
-    ; Use a negative gravity
-    ld de, -(0.21 >> 8)
-    jr .gravityAccel
-.gravDeccelEnd:
-
-    ; Otherwise we just do normal gravity acceleration
-    ld de, 0.21 >> 8
+    ; We divide the gravity by 2
+    srl d
+    rr e
 
 .gravityAccel:
     call PhysicsAccelerate
@@ -303,6 +275,7 @@ wPlayerSpeedX:: dw
 wPlayerSpeedY:: dw
 
 section "Player HRAM", hram
-hFlags: db
+hGroundFlags: db
+hGroundFlagsNext: db
 hJumpBuffer: db
 hGrace: db
