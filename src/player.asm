@@ -2,6 +2,19 @@ include "hardware.inc"
 include "input.inc"
 include "attrs.inc"
 
+
+; We have to define this section first so the assembly can figure out the size
+; of the section
+section "Player HRAM", hram
+hGroundFlags: db
+hGroundFlagsNext: db
+hJumpBuffer: db
+hGrace: db
+hDashCount: db
+hDashTime: db
+hEnd:
+
+
 section "Player ROM", rom0
 
 
@@ -23,20 +36,224 @@ PlayerLoad::
     ld [hl], 0
 
     ; Reset player and physics variables
-    xor a, a
+    ld hl, wPlayerSpeedX
+    ld de, wEnd - wPlayerSpeedX
+    call MemoryClear
+    ; Clear the HRAM variables using the A=0 effect from above
+    ld c, low(hGroundFlags)
+rept hEnd - hGroundFlags
+    ldh [c], a
+    inc c
+endr
+    call PhysicsLoad
+    ; Set the inital dash count
+    ; TODO: make this modifiable using a "max dash" variable
+    ld a, 1
+    ldh [hDashCount], a
+    pop hl
+    ret
+
+
+;; Performs the calculations to start a dash. We put this in its own function 
+;; due to the size and complexity of it.
+StartDash:
+    ; Figure out the initial X speed for the dash using the left and right
+    ; buttons
+    ldh a, [hInput]
+    bit INB_RIGHT, a
+    jr z, .rightEnd
+    ld bc, 5.0 >> 8
+    jr .endX
+.rightEnd:
+    bit INB_LEFT, a
+    jr z, .leftEnd
+    ld bc, -(5.0 >> 8)
+    jr .endX
+.leftEnd:
+    ld bc, 0.0 >> 8
+.endX:
+
+    ; Figure out the initial Y speed for the dash using the up and down buttons
+    bit INB_UP, a
+    jr z, .upEnd
+    ld de, -(5.0 >> 8)
+    jr .endY
+.upEnd:
+    bit INB_DOWN, a
+    jr z, .downEnd
+    ld de, 5.0 >> 8
+    jr .endY
+.downEnd:
+    ld de, 0.0 >> 8
+.endY:
+
+    ; If both X and Y are zero, update based on the players flip state
+    ; At this point X and Y speeds are always greater than 1 so we only have to
+    ; check the high byte
+    ld a, b
+    or a, a
+    jr nz, .flipEnd
+    ld a, d
+    or a, a
+    jr nz, .flipEnd
+    ; Check the flip state of the player
+    ld a, [wObjectPlayer + OAMA_FLAGS]
+    bit OAMB_XFLIP, a
+    ; Set the player as facing right, overwrite if wrong
+    ld bc, 1.0 >> 8
+    jr z, .flipEnd
+    ; Player is facing left
+    ld bc, -(1.0 >> 8)
+.flipEnd:
+
+    ; If both X and Y are non-zero, reduce the speed down so the diagonal speed
+    ; still equals 1
+    ld a, b
+    or a, a
+    jr z, .diagEndY
+    ld a, d
+    or a, a
+    jr z, .diagEndY
+    ; The only possible values here is 5 and -5. We can't have the speed 1 or -1
+    ; since that only happens on one axis. Thus, we just check if its negative
+    ; and set it to 3.54 or -3.54 respectively.
+    bit 7, b
+    ld bc, 3.535533906 >> 8
+    jr z, .diagEndX
+    ; X speed is negative
+    ld bc, -(3.535533906 >> 8)
+.diagEndX:
+    ; Same for the Y axis
+    bit 7, d
+    ld de, 3.535533906 >> 8
+    jr z, .diagEndY
+    ; Y speed is negative
+    ld de, -(3.535533906 >> 8)
+.diagEndY:
+
+    ; Save speed X and Y
     ld hl, wPlayerSpeedX
     ; Speed X
+    ld a, c
     ld [hl+], a
+    ld a, b
     ld [hl+], a
     ; Speed Y
+    ld a, e
     ld [hl+], a
+    ld a, d
     ld [hl+], a
-    ldh [hGroundFlags], a
-    ldh [hGroundFlagsNext], a
-    ldh [hJumpBuffer], a
-    ldh [hGrace], a
-    call PhysicsLoad
+
+    ; Calculate the dash target, which is 2*sign(speed), so we check the sign
+    ; bit and check if it is zero or not
+    ; Target X
+    ; For checking zero, all the possible values so far are >=1.0 so we only
+    ; need to check the high byte
+    ld a, b
+    or a, a
+    ; If the speed is 0, the target is 0, so we don't have to make any changes
+    jr z, .targetEndX
+    ; Otherwise we set it to either 2 or -2 depending on the sign
+    bit 7, b
+    ld bc, 2.0 >> 8
+    jr z, .targetEndX
+    ; If the speed is negative, the target is -2
+    ld bc, -(2.0 >> 8)
+.targetEndX:
+    ; Target Y
+    ; Check for zero
+    ld a, d
+    or a, a
+    jr z, .targetEndY
+    ; Otherwise set based on sign
+    bit 7, d
+    ld de, 2.0 >> 8
+    jr z, .targetEndY
+    ; As a special case for the Y axis, the max speed up is 1.5
+    ld de, -(1.5 >> 8)
+.targetEndY:
+
+    ; Write the target speed X and Y
+    ; Target X
+    ld a, c
+    ld [hl+], a
+    ld a, b
+    ld [hl+], a
+    ; Target Y
+    ld a, e
+    ld [hl+], a
+    ld a, d
+    ld [hl+], a
+
+    ; Finally we must calculate teh acceleration. This will be the same for both
+    ; values and becomes ~1.06 when dashing diagonally and 1.5 otherwise
+    ; Like before, the only values that are possible in the target X and Y
+    ; registers are all >=1.0 so we only have to check the highest byte for
+    ; non-zero
+    ld a, b
+    or a, a
+    ; We modify BC now since we have the flag so we don't need it anymore
+    ; Like similar code above, we assume one case and update it if wrong
+    ld bc, 1.5 >> 8
+    jr z, .accelDiagEnd
+    ld a, d
+    or a, a
+    jr z, .accelDiagEnd
+    ; We are moving diagonally
+    ld bc, 1.060660172 >> 8
+.accelDiagEnd:
+
+    ; Write the acceleration to both X and Y
+    ; TODO: anyway to optimize this such that we don't have to swap A back and
+    ;       forth?
+rept 2
+    ld a, c
+    ld [hl+], a
+    ld a, b
+    ld [hl+], a
+endr
+    ret
+
+
+;; Accelerates a single axis using the speed, target and acceleration in memory
+;; @param hl: Pointer to the speed parameter to start reading from
+;; @effects hl: Pointer to the next speed parameter
+DashAccelerate:
+    ; Save HL for later
+    push hl
+    ; Speed
+    ld a, [hl+]
+    ld e, a
+    ld a, [hl+]
+    ld d, a
+    ; Target
+    inc hl
+    inc hl
+    ld a, [hl+]
+    ld c, a
+    ld a, [hl+]
+    ld b, a
+    ; Acceleration
+    inc hl
+    inc hl
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+    ; Swap HL and DE and accelerate
+    ld a, h
+    ld h, d
+    ld d, a
+    ld a, l
+    ld l, e
+    ld e, a
+    call PhysicsAccelerate
+    ; Save the speed back using the saved pointer above
+    ld a, l
+    ld b, h
     pop hl
+    ld [hl+], a
+    ld a, b
+    ld [hl+], a
     ret
 
 
@@ -79,13 +296,19 @@ PlayerUpdate::
     ; Update the grace period
     ; Check if we are on solid ground
     bit ATTRB_SOLID, a
-    ld a, 6
-    jr nz, .graceEnd
+    jr nz, .onGround
     ; If the player is not on the ground, decrement grace period
     ldh a, [hGrace]
     or a, a
     jr z, .graceEnd
     dec a
+    jr .graceEnd
+.onGround:
+    ; If the player is on the ground reset the dash count
+    ld a, 1
+    ldh [hDashCount], a
+    ; Reset the grace period
+    ld a, 6
 .graceEnd:
     ldh [hGrace], a
 
@@ -99,6 +322,28 @@ PlayerUpdate::
     ld c, a
     call SmokeSpawn
 .landEnd:
+
+    ; If we are in a dash, apply the acceleration for 4 frames
+    ldh a, [hDashTime]
+    or a, a
+    jr z, .dashAccelEnd
+    ; Decrement the dash timer
+    dec a
+    ldh [hDashTime], a
+    ; Accelerate the X speed
+    ld hl, wPlayerSpeedX
+    call DashAccelerate
+    ; Accelerate the Y speed (the above function call increments HL)
+    call DashAccelerate
+    ; Spawn a smoke particle
+    ld hl, wObjectPlayer
+    ld a, [hl+]
+    ld c, a
+    ld b, [hl]
+    call SmokeSpawn
+    ; Skip everything else, using a jump because it is too far
+    jp .animate
+.dashAccelEnd:
 
     ; -- move --
     ; Read the current speed X
@@ -184,17 +429,12 @@ PlayerUpdate::
 .facingRight:
     ld [wObjectPlayer + OAMA_FLAGS], a
 .facingEnd:
-
-    ; Finish updating movement from above
     ; Write the new speed X
     ld a, l
     ld b, h
     ld hl, wPlayerSpeedX
     ld [hl+], a
     ld [hl], b
-    ; Get the physics engine to move the player left and right
-    ld c, a
-    call PhysicsMovePlayerX
 
     ; -- gravity --
     ; Read speed Y
@@ -264,18 +504,37 @@ PlayerUpdate::
     ld hl, wPlayerSpeedY
     ld [hl+], a
     ld [hl], b
-    ; Get the physics engine to move up and down
-    ld c, a
-    call PhysicsMovePlayerY
-    ret
+
+    ; -- dash --
+    ; Check if the player has pressed the dash button
+    ldh a, [hInputNext]
+    bit INB_B, a
+    jr z, .dashEnd
+    ; Check if the player has any dashes left
+    ldh a, [hDashCount]
+    or a, a
+    jr z, .dashEnd
+    ; Update the dash count and dash timer
+    dec a
+    ldh [hDashCount], a
+    ld a, 4
+    ldh [hDashTime], a
+    ; Call the dash subroutine
+    call StartDash
+.dashEnd:
+
+.animate:
+    ; Naming this label now since this is where the animation code will go
+
+    ; Get the physics engine to move the player using the speed
+    jp PhysicsMovePlayer
 
 
 section "Player WRAM", wram0
 wPlayerSpeedX:: dw
 wPlayerSpeedY:: dw
-
-section "Player HRAM", hram
-hGroundFlags: db
-hGroundFlagsNext: db
-hJumpBuffer: db
-hGrace: db
+wDashTargetX: dw
+wDashTargetY: dw
+wDashAccelX: dw
+wDashAccelY: dw
+wEnd:

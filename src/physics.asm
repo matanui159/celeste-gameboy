@@ -1,15 +1,27 @@
 include "hardware.inc"
 include "attrs.inc"
 
+
+; We have to define this section first so the assembly can figure out the size
+; of the section
+section "Physics HRAM", hram
+hPlayerRemX: db
+hPlayerRemY: db
+hEnd:
+
+
 section "Physics ROM", rom0
 
 
 ;; Resets the physics variables
 PhysicsLoad::
     xor a, a
-    ldh [hPlayerRemX], a
-    ldh [hPlayerRemY], a
-    ret
+    ld c, low(hPlayerRemX)
+rept hEnd - hPlayerRemX
+    ldh [c], a
+    inc c
+endr
+   jp MemoryClear
 
 
 ;; Updates a value until it meets a target
@@ -49,6 +61,7 @@ PhysicsAccelerate::
     sbc a, d
     ld h, a
     ; Check if we have gone too far
+    bit 7, h
     jr z, .return
 
 .equal:
@@ -136,22 +149,8 @@ PhyscisPlayerTileFlags::
     ret
 
 
-;; @param bc: Speed X
-PhysicsMovePlayerX::
-    ; -- [x] get move amount --
-    ; We add the remainder to the speed, and use the high byte to move the
-    ; player. The low byte gets saved back as a remainder.
-    ldh a, [hPlayerRemX]
-    ld l, a
-    ld h, 0
-    add hl, bc
-    ld a, l
-    ldh [hPlayerRemX], a
-    ; If the movement amount is zero we don't move at all
-    ld a, h
-    or a, a
-    ret z
-
+;; @param h: X movement amount
+moveX:
     ; Get the position
     ld a, [wObjectPlayer + OAMA_X]
     ld b, a
@@ -218,21 +217,8 @@ PhysicsMovePlayerX::
     ret
 
 
-;; @param bc: Speed Y
-PhysicsMovePlayerY::
-    ; -- [y] get move amount --
-    ; Figure out the movement amount and new remainder
-    ldh a, [hPlayerRemY]
-    ld h, 0
-    ld l, a
-    add hl, bc
-    ld a, l
-    ldh [hPlayerRemY], a
-    ; If the movement is zero, don't move at all
-    ld a, h
-    or a, a
-    ret z
-
+;; @param h: Y movement amount
+moveY:
     ; Get the position
     ld a, [wObjectPlayer + OAMA_X]
     ld b, a
@@ -296,6 +282,46 @@ PhysicsMovePlayerY::
     ret
 
 
-section "Physics HRAM", hram
-hPlayerRemX: db
-hPlayerRemY: db
+;; Moves the player using the physics engine. Despite every object having
+;; physics in Celeste the player is the only one that uses it.
+PhysicsMovePlayer::
+    ld hl, wPlayerSpeedX
+    ; -- [x] get move amount --
+    ; Read the speed X
+    ld a, [hl+]
+    ld c, a
+    ld a, [hl+]
+    ld b, a
+    ; Save HL for later when reading the speed Y
+    push hl
+    ; We add the remainder to the speed, and use the high byte to move the
+    ; player. The low byte gets saved back as a remainder.
+    ldh a, [hPlayerRemX]
+    ld l, a
+    ld h, 0
+    add hl, bc
+    ld a, l
+    ldh [hPlayerRemX], a
+    ; If the movement amount is non-zero, move in the X direction
+    ld a, h
+    or a, a
+    call nz, moveX
+
+    ; -- [y] get move amount --
+    ; Read the speed Y
+    pop hl
+    ld a, [hl+]
+    ld c, a
+    ld b, [hl]
+    ; Figure out the movement amount and new remainder
+    ldh a, [hPlayerRemY]
+    ld h, 0
+    ld l, a
+    add hl, bc
+    ld a, l
+    ldh [hPlayerRemY], a
+    ; If the movement is non-zero, move in the Y direction
+    ld a, h
+    or a, a
+    jp nz, moveY
+    ret
