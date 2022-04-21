@@ -1,8 +1,5 @@
 include "hardware.inc"
 
-; Equal to the amount allocated in the OAM segment
-def SMOKE_COUNT equ 9
-
 section "Smoke ROM", rom0
 
 
@@ -32,7 +29,7 @@ SmokeSpawn::
     or a, 1
     ld [hl-], a
     ; Set tile
-    ld a, 30
+    ld a, 29
     ld [hl-], a
     ; Set position
     ; Use the lowest random bit for X
