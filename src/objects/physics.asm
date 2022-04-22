@@ -1,5 +1,5 @@
-include "hardware.inc"
-include "attrs.inc"
+include "../hardware.inc"
+include "../attrs.inc"
 
 
 ; We have to define this section first so the assembly can figure out the size

@@ -1,4 +1,4 @@
-include "hardware.inc"
+include "../hardware.inc"
 
 section "VBlank interrupt", rom0[$0040]
     jp VBlank

@@ -1,4 +1,4 @@
-include "hardware.inc"
+include "../hardware.inc"
 
 ; The width and height of the map in bytes, to match the SCRN_*_B constants
 def MAP_X_B equ 16

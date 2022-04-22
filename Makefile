@@ -15,14 +15,14 @@ CELESTE_OBJ = \
 	bin/src/main.obj \
 	bin/src/memory.obj \
 	bin/src/random.obj \
-	bin/src/video.obj \
-	bin/src/object.obj \
-	bin/src/map.obj \
-	bin/src/input.obj \
-	bin/src/physics.obj \
-	bin/src/player.obj \
-	bin/src/smoke.obj \
-	bin/src/fragment.obj
+	bin/src/engine/video.obj \
+	bin/src/engine/object.obj \
+	bin/src/engine/map.obj \
+	bin/src/engine/input.obj \
+	bin/src/engine/fragment.obj \
+	bin/src/objects/physics.obj \
+	bin/src/objects/player.obj \
+	bin/src/objects/smoke.obj
 
 LUA = bin/celeste.lua
 LUA_GEN = bin/gen/gen_lua
