@@ -6,23 +6,19 @@ section "VBlank interrupt", rom0[$0040]
 section "Video ROM", rom0
 
 
-;; Wait for a chance to disable the LCD and disable it
-VideoDisable::
+;; Wait for the start of the next V-blank
+VideoWait::
     ; First check if the LCD is enabled, if not return immediately
     ldh a, [rLCDC]
     bit LCDCB_ON, a
     ret z
 
     ; Busy loop until first line of V-blank
-    ld a, 144
+    ld a, SCRN_Y
     ld hl, rLY
 .loop:
     cp a, [hl]
     jr nz, .loop
-
-    ; Disable LCD
-    xor a, a
-    ldh [rLCDC], a
     ret
 
 
@@ -50,7 +46,9 @@ PaletteCopy::
 ;; Initializes the video subsystem
 VideoInit::
     ; Disable the LCD so we can safely work on it
-    call VideoDisable
+    call VideoWait
+    xor a, a
+    ldh [rLCDC], a
 
     ; Copy over the tile data
     ld hl, _VRAM
@@ -70,6 +68,7 @@ VideoInit::
     ldh [rBGP], a
     ldh [rOBP0], a
     ldh [rOBP1], a
+    jr .palettesEnd
 
 .cgbPalettes:
     ; Copy over the CGB palettes
@@ -98,15 +97,18 @@ VideoInit::
 ;; frame
 ;; @param b: The amount of frames to wait
 VideoDraw::
-    ld c, low(hVideoFrames)
+    ld hl, hVideoFrames
     ; Reset the frame count
     xor a, a
-    ldh [c], a
+    ld [hl], a
+    ; We move B to A and decrement such that the carry flag (A < [HL]) is
+    ; set when [HL] becomes B or higher
+    ld a, b
+    dec a
 .loop:
     halt
-    ldh a, [c]
-    cp a, b
-    jr c, .loop
+    cp a, [hl]
+    jr nc, .loop
     ret
 
 
@@ -121,7 +123,7 @@ VBlank:
     or a, a
     jr nz, VBlankReturn
     ; We are in `VideoDraw` so we know which exact registers we need to save
-    push bc
+    push hl
     ; Other pieces of fragment code will continue here, ending with
     ; `fragment.asm`
 

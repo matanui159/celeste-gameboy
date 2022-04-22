@@ -35,10 +35,11 @@ TileLoad:
 
 
 ;; A faster copy routine specifically for copying rows from WRAM to VRAM
+;; @param hl: Destination address to copy to
 ;; @param bc: Source address to copy from
+;; @effect hl: Destination end address
 ;; @saved bc
 MapCopy:
-    ld hl, _SCRN0
     ld de, MAP_X_B
 .loop:
     ; Copy over one row to VRAM
@@ -52,6 +53,30 @@ endr
     ; If the last increment ended with 0, we have rached the end of the map
     ; Surprisingly, 16-bit addition doesn't overwrite the Z flag
     jr nz, .loop
+    ret
+
+
+;; Perform a CGB-only HDMA from WRAM to VRAM
+;; @param bc: Source address to copy from
+;; @effect a: Zero
+;; @saved bc
+MapHDMA:
+    ld hl, rHDMA1
+    ; Source address high byte
+    ld a, b
+    ld [hl+], a
+    ; Source address low byte
+    ld a, c
+    ld [hl+], a
+    ; Destination address high byte
+    ld a, high(_SCRN0)
+    ld [hl+], a
+    ; Destination address low byte, which is $00 for _SCRN0
+    xor a, a
+    ld [hl+], a
+    ; (length / 16) - 1
+    ; This starts the HDMA
+    ld [hl], ((SCRN_VX_B * MAP_Y_B) / 16) - 1
     ret
 
 
@@ -96,29 +121,53 @@ MapLoad::
     ld a, OP_RET
     ld [wUpdateQueue], a
 
-    ; Disable LCD and copy over the map to VRAM
-    ; TODO: on CGB we could use HDMA so we don't have to disable the screen
-    call VideoDisable
-    ld bc, wMapTiles
-    call MapCopy
-
-    ; Check if we are on CGB to see if we have to copy attributes
+    ; Check which method to use for copying the map to VRAM
     ldh a, [hMainBoot]
     cp a, BOOTUP_A_CGB
-    jr nz, .vramCopyEnd
-    ; Switch to VRAM bank 1 for the attributes
-    ld a, 1
-    ldh [rVBK], a
-    ; BC is saved in the above copy call, just have to increment to get
-    ; a pointer to map attributes
+    jr z, .cgbCopy
+
+    ; On DMG, we disable LCD and copy over the map to VRAM naively
+    call VideoWait
+    xor a, a
+    ldh [rLCDC], a
+    ; Copy over the map while the LCD is disabled
+    ld hl, _SCRN0
+    ld bc, wMapTiles
+    call MapCopy
+    jr .copyEnd
+
+.cgbCopy:
+
+    ; On CGB we first copy to a point in memory that is similar to VRAM
+    ; (double width) and then use HDMA to copy it to the real VRAM during
+    ; V-blank without having to disable the screen.
+    ; Copy over the map tiles
+    ld hl, wCgbTiles
+    ld bc, wMapTiles
+    call MapCopy
+    ; Copy over the map attributes, HL is already incremented to point to the
+    ; next section, BC is still the same
     inc b
     call MapCopy
-    ; Restore the VRAM bank
-    xor a, a
+    ; Wait for V-blank
+    call VideoWait
+    ; Use DMA for the map tiles
+    ld bc, wCgbTiles
+    call MapHDMA
+    ; Switch to VRAM bank 1
+    ld a, 1
     ldh [rVBK], a
-.vramCopyEnd:
+    ; Use DMA for the map attributes, BC is the same from above
+    ld b, high(wCgbAttrs)
+    call MapHDMA
+    ; Switch back to VRAM bank 0 using effect from above
+    ldh [rVBK], a
+
+.copyEnd:
 
     ; Enable LCD and return
+    ; We still do this on CGB since if this is the first call, the LCD would
+    ; already be disabled
     ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a
     ret
@@ -126,6 +175,11 @@ MapLoad::
 
 ;; Initializes the map rendering and update routines
 MapInit::
+    ; Clear out the CGB buffers
+    ld hl, wCgbTiles
+    ld de, SCRN_VX_B * MAP_Y_B * 2
+    call MemoryClear
+
     ; Clear out the tiles in screen 0
     ld hl, _SCRN0
     ld de, SCRN_VX_B * SCRN_VY_B
@@ -135,13 +189,13 @@ MapInit::
     ldh a, [hMainBoot]
     cp a, BOOTUP_A_CGB
     jr nz, .clearEnd
-    ; Swap to VRAM bank 1 and clear out the attributes
+    ; Swap to VRAM bank 1 and clear out the attributes, we can use HDMA here as
+    ; a shortcut
     ld a, 1
     ldh [rVBK], a
-    ld hl, _SCRN0
-    ld de, SCRN_VX_B * SCRN_VY_B
-    call MemoryClear
-    ; Swap back to VRAM bank 0 using effect from MemoryClear
+    ld bc, wCgbTiles
+    call MapHDMA
+    ; Swap back to VRAM bank 0 using effect from MapHDMA
     ldh [rVBK], a
 .clearEnd:
 
@@ -306,5 +360,7 @@ VBlankMap:
 section "Map WRAM", wram0, align[8]
 wMapTiles:: ds MAP_X_B * MAP_Y_B
 wMapAttrs:: ds MAP_X_B * MAP_Y_B
+wCgbTiles: ds SCRN_VX_B * MAP_Y_B
+wCgbAttrs: ds SCRN_VX_B * MAP_Y_B
 ; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`
 wUpdateQueue: ds MAP_UPDATES * 5 + 1

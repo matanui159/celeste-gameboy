@@ -1,5 +1,5 @@
 section fragment "VBlank", rom0
-    pop bc
+    pop hl
     ldh a, [hVideoFrames]
 VBlankReturn::
     inc a
