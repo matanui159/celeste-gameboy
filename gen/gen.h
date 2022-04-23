@@ -78,11 +78,11 @@ static const gen_palette_t gen_bg_palettes[] = {
 static const gen_palette_t gen_obj_palettes[] = {
     {
         0, // player
-        {0, 3, 15, 8, 1, 3, 7, 8},
+        {0, 3, 15, 8, 1, 3, 7, 8}
     },
     {
         1, // clouds, smoke, wings, balloons, string
-        {0, 8, 6, 7, 0, 8, 6, 7},
+        {0, 8, 6, 7, 0, 8, 6, 7}
     },
     {
         2, // fruit / strawberries

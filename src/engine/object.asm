@@ -21,8 +21,8 @@ endl
 ;; Initializes the object rendering
 ObjectsInit::
     ; Clear the OAM source
-    ld hl, wObjectSnow
-    ld de, wObjects.end - wObjectSnow
+    ld hl, wObjectsSmoke
+    ld de, wObjects.end - wObjectsSmoke
     call MemoryClear
 
     ; Copy over the DMA function to HRAM
@@ -39,17 +39,22 @@ endr
 
 section fragment "VBlank", rom0
 VBlankObjects:
-    ld a, high(wObjectSnow)
-    ; High byte is 40 wait loops, low byte is DMA register
-    ld bc, $2846
+    ld a, high(wObjectsSmoke)
+    ; High byte is 41 wait loops, low byte is DMA register
+    ; Despite what Pandocs says, this actually has to be 41 loops. The last
+    ; iteration of the DMA function will run for 3 cycles instead of 4 making
+    ; the entire wait loop be 159 cycles. Most emulators are fine with this due
+    ; to the extra 4 cycles from the RET instruction, but Emulicious (which is
+    ; apparently based on real hardware) fails, likely due to reading the stack
+    ; early on in the RET instruction.
+    ld bc, $2946
     call hObjectDMA
 
 
 ; These sections have specific addresses so we can keep the space between them
 ; empty
 section "Objects WRAM", wram0[$c000]
-wObjectSnow:: ds sizeof_OAM_ATTRS
-wObjectsSmoke:: ds 9 * sizeof_OAM_ATTRS
+wObjectsSmoke:: ds 10 * sizeof_OAM_ATTRS
 .end::
 wObjectPlayer:: ds sizeof_OAM_ATTRS
 wObjectsFruit:: ds 3 * sizeof_OAM_ATTRS

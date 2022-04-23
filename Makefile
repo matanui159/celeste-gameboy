@@ -2,7 +2,7 @@ CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -Weverything
 LINK_FLAGS = -w
 FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
-DMG_FLAGS = --force-dmg -P 72  # "Black Zero"
+DMG_FLAGS = --force-dmg -P 72 # "Black Zero"
 CGB_FLAGS = -C 1 # SameBoy
 DEBUG_FLAGS = -p
 
@@ -36,7 +36,7 @@ clean:
 MKDIR = mkdir -p $(dir $@)
 $(CELESTE): $(CELESTE_OBJ)
 	$(MKDIR)
-	rgblink -o $@ $^ -m $(@:.gb=.map) $(LINK_FLAGS)
+	rgblink -o $@ $^ -n $(@:.gb=.sym) -m $(@:.gb=.map) $(LINK_FLAGS)
 	rgbfix $@ $(FIX_FLAGS)
 
 RGBASM = rgbasm -o $@ $< -i $(dir $<) -M $(@:.obj=.mak) -MP $(ASM_FLAGS)

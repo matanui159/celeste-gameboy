@@ -51,7 +51,7 @@ SmokeSpawn::
     ; Save the L address for the next smoke particle, wrap it with the lowest
     ; address
     ld a, l
-    cp a, low(wObjectsSmoke)
+    or a, a
     jr nz, .saveSmoke
     ld a, low(wObjectsSmoke.end)
 .saveSmoke:
@@ -84,46 +84,54 @@ SmokeSpawn::
 
 ;; Updates all the smoke particles
 SmokeUpdate::
-    ld hl, wObjectsSmoke
+    ld hl, wObjectsSmoke.end
 .loop:
     ; Check if the particle is still alive (tild ID != 0)
-    inc l
-    inc l
-    ld a, [hl-]
-    or a, a
-    jr z, .next
     dec l
+    dec l
+    ld a, [hl]
+    or a, a
+    jr nz, .update
+    dec l
+    dec l
+    jr nz, .loop
+    ret
 
-    ; Update Y movement using a fixed speed of -0.1 and Y remainder
-    ; Read the Y position and remainder
-    ld b, [hl]
-    ; INC swaps to the objects data, DEC swaps back
+.update:
+    ; Update tile ID using the counter
+    ; INC swaps to the object's data, DEC swaps back
     inc h
-    ld c, [hl]
-    ; Add the speed, store into AC
-    ld d, h
-    ld e, l
-    ld hl, -(0.1 >> 8)
-    add hl, bc
-    ld a, h
-    ld c, l
-    ; Write the new Y and remainder
-    ld h, d
-    ld l, e
-    ld [hl], c
+    ld b, [hl]
+    dec b
+    jr nz, .counterEnd
+    ; If the counter is 0, increment the tile ID and reset the counter
+    ; We still have the tile ID in register A from above
+    inc a
+    ; Check if we reach tile 32, destroy the object if we have, skipping the
+    ; rest of the update
+    cp a, 32
+    jr nc, .destroy
+    ; Save the new tile
     dec h
-    ld [hl+], a
+    ld [hl], a
+    inc h
+    ld b, 5
+.counterEnd:
+    ld a, b
+    ld [hl-], a
 
-    ; Do the same for X movement, but using the random speed
+    ; Update the X movement, using the random speed
     ; Load X position
-    ; We also save HL now, while it is at the correct address for
-    ; writing X later
+    ; Save HL into DE for later. We also use it to get the high-byte
     ld d, h
     ld e, l
-    ld b, [hl]
-    inc h
+    ; Low byte
     ld a, [hl+]
     ld c, a
+    ; High byte
+    dec d
+    ld a, [de]
+    ld b, a
     ; Load random X speed
     inc l
     ld l, [hl]
@@ -137,40 +145,44 @@ SmokeUpdate::
     ld l, e
     ld [hl], b
     inc h
-    ld [hl+], a
-
-    ; Update tile ID using the counter
-    ld b, [hl]
-    dec b
-    jr nz, .counterEnd
-    ; If the counter is 0, increment the tile ID and reset the counter
-    dec h
-    ld a, [hl]
-    inc a
-    ; Check if we reach tile 32
-    cp a, 32
-    jr c, .tileEnd
-    ; If we have, destroy the object
-    xor a, a
-    dec l
-    dec l
-    ld [hl+], a
-    inc l
-.tileEnd:
-    ld [hl], a
-    inc h
-    ld b, 5
-.counterEnd:
-    ld a, b
     ld [hl-], a
-    dec h
 
-.next:
-    ld a, l
-    add a, 3
-    ld l, a
-    cp a, low(wObjectsSmoke.end)
-    jr c, .loop
+    ; Update Y movement using a fixed speed of -0.1 and Y remainder
+    ; Read the Y position and remainder
+    ; Save HL for later
+    ld d, h
+    ld e, l
+    ld c, [hl]
+    dec h
+    ld b, [hl]
+    ; Add the speed, store into AC
+    ld hl, -(0.1 >> 8)
+    add hl, bc
+    ld a, h
+    ld c, l
+    ; Write the new Y and remainder
+    ld h, d
+    ld l, e
+    ld [hl], c
+    dec h
+    ; We use HL+ so we can DEC below to quickly check L
+    ld [hl+], a
+
+    ; Continue the loop
+    dec l
+    jr nz, .loop
+    ret
+
+.destroy:
+    ; Destroy the object and continue the loop
+    xor a, a
+    dec h
+    ; Set tile ID to 0
+    ld [hl-], a
+    dec l
+    ; Set Y position to 0
+    ld [hl], a
+    jr nz, .loop
     ret
 
 

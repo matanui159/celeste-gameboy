@@ -189,13 +189,13 @@ MapInit::
     ldh a, [hMainBoot]
     cp a, BOOTUP_A_CGB
     jr nz, .clearEnd
-    ; Swap to VRAM bank 1 and clear out the attributes, we can use HDMA here as
-    ; a shortcut
+    ; Swap to VRAM bank 1 and clear out the attributes
     ld a, 1
     ldh [rVBK], a
-    ld bc, wCgbTiles
-    call MapHDMA
-    ; Swap back to VRAM bank 0 using effect from MapHDMA
+    ld hl, _SCRN0
+    ld de, SCRN_VX_B * SCRN_VY_B
+    call MemoryClear
+    ; Swap back to VRAM bank 0 using effect from MemoryClear
     ldh [rVBK], a
 .clearEnd:
 
