@@ -1,7 +1,7 @@
 CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -Weverything
-LINK_FLAGS = -w
-FIX_FLAGS = -vcj -t CELESTE -n 0x10 # ver. 1.0
+LINK_FLAGS = -w -p 0xff
+FIX_FLAGS = -f hg
 DMG_FLAGS = --force-dmg -P 72 # "Black Zero"
 CGB_FLAGS = -C 1 # SameBoy
 DEBUG_FLAGS = -p

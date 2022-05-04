@@ -1,19 +1,5 @@
 include "../hardware.inc"
 include "../attrs.inc"
-include "../engine/input.inc"
-
-
-; We have to define this section first so the assembly can figure out the size
-; of the section
-section "Player HRAM", hram
-hGroundFlags: db
-hGroundFlagsNext: db
-hJumpBuffer: db
-hGrace: db
-hDashCount: db
-hDashTime: db
-hEnd:
-
 
 section "Player ROM", rom0
 
@@ -39,13 +25,13 @@ PlayerLoad::
     ld hl, wPlayerSpeedX
     ld de, wEnd - wPlayerSpeedX
     call MemoryClear
-    ; Clear the HRAM variables using the A=0 effect from above
-    ld c, low(hGroundFlags)
-rept hEnd - hGroundFlags
-    ldh [c], a
-    inc c
-endr
+    ; Clear the HRAM variables
+    ld hl, hGroundFlags
+    ld de, hEnd - hGroundFlags
+    call MemoryClear
+    ; Clear the physics variables
     call PhysicsLoad
+
     ; Set the inital dash count
     ; TODO: make this modifiable using a "max dash" variable
     ld a, 1
@@ -60,12 +46,12 @@ StartDash:
     ; Figure out the initial X speed for the dash using the left and right
     ; buttons
     ldh a, [hInput]
-    bit INB_RIGHT, a
+    bit PADB_RIGHT, a
     jr z, .rightEnd
     ld bc, 5.0 >> 8
     jr .endX
 .rightEnd:
-    bit INB_LEFT, a
+    bit PADB_LEFT, a
     jr z, .leftEnd
     ld bc, -(5.0 >> 8)
     jr .endX
@@ -74,12 +60,12 @@ StartDash:
 .endX:
 
     ; Figure out the initial Y speed for the dash using the up and down buttons
-    bit INB_UP, a
+    bit PADB_UP, a
     jr z, .upEnd
     ld de, -(5.0 >> 8)
     jr .endY
 .upEnd:
-    bit INB_DOWN, a
+    bit PADB_DOWN, a
     jr z, .downEnd
     ld de, 5.0 >> 8
     jr .endY
@@ -261,7 +247,7 @@ DashAccelerate:
 PlayerUpdate::
     ; Update the jump buffer
     ldh a, [hInputNext]
-    bit INB_A, a
+    bit PADB_A, a
     ld a, 4
     jr nz, .jumpBufferEnd
     ; If the jump button wasn't pressed, decrement the jump-buffer unless it is
@@ -392,13 +378,13 @@ PlayerUpdate::
 
     ; Accelerate right if the button is pressed
     ldh a, [hInput]
-    bit INB_RIGHT, a
+    bit PADB_RIGHT, a
     jr z, .moveRightEnd
     ld bc, 1.0 >> 8
     jr .moveAccel
 .moveRightEnd:
     ; Accelerate left if the button is pressed
-    bit INB_LEFT, a
+    bit PADB_LEFT, a
     jr z, .moveLeftEnd
     ld bc, -(1.0 >> 8)
     jr .moveAccel
@@ -508,7 +494,7 @@ PlayerUpdate::
     ; -- dash --
     ; Check if the player has pressed the dash button
     ldh a, [hInputNext]
-    bit INB_B, a
+    bit PADB_B, a
     jr z, .dashEnd
     ; Check if the player has any dashes left
     ldh a, [hDashCount]
@@ -538,3 +524,12 @@ wDashTargetY: dw
 wDashAccelX: dw
 wDashAccelY: dw
 wEnd:
+
+section "Player HRAM", hram
+hGroundFlags: db
+hGroundFlagsNext: db
+hJumpBuffer: db
+hGrace: db
+hDashCount: db
+hDashTime: db
+hEnd:

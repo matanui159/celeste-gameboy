@@ -1,27 +1,14 @@
 include "../hardware.inc"
 include "../attrs.inc"
 
-
-; We have to define this section first so the assembly can figure out the size
-; of the section
-section "Physics HRAM", hram
-hPlayerRemX: db
-hPlayerRemY: db
-hEnd:
-
-
 section "Physics ROM", rom0
 
 
 ;; Resets the physics variables
 PhysicsLoad::
-    xor a, a
-    ld c, low(hPlayerRemX)
-rept hEnd - hPlayerRemX
-    ldh [c], a
-    inc c
-endr
-   jp MemoryClear
+    ld hl, hPlayerRemX
+    ld de, hEnd - hPlayerRemX
+    jp MemoryClear
 
 
 ;; Updates a value until it meets a target
@@ -325,3 +312,9 @@ PhysicsMovePlayer::
     or a, a
     jp nz, moveY
     ret
+
+
+section "Physics HRAM", hram
+hPlayerRemX: db
+hPlayerRemY: db
+hEnd:

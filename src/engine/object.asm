@@ -26,15 +26,10 @@ ObjectsInit::
     call MemoryClear
 
     ; Copy over the DMA function to HRAM
-    ; Instead of using MemoryCopy we can make it faster with LDH and REPT
-    ld c, low(hObjectDMA)
-    ld hl, ObjectDMA
-rept hObjectDMA.end - hObjectDMA
-    ld a, [hl+]
-    ldh [c], a
-    inc c
-endr
-    ret
+    ld hl, hObjectDMA
+    ld bc, ObjectDMA
+    ld de, hObjectDMA.end - hObjectDMA
+    jp MemoryCopy
 
 
 section fragment "VBlank", rom0

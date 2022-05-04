@@ -6,8 +6,8 @@ section "Input ROM", rom0
 ;; Updates the input variables in HRAM
 InputUpdate::
     ld c, low(rP1)
-    ; Get the DPAD buttons
-    ld a, P1F_GET_DPAD
+    ; Get the action buttons
+    ld a, P1F_GET_BTN
     ldh [c], a
 rept 4
     ldh a, [c]
@@ -16,8 +16,8 @@ endr
     cpl
     and a, $0f
     ld b, a
-    ; Get the action buttons
-    ld a, P1F_GET_BTN
+    ; Get the DPAD buttons
+    ld a, P1F_GET_DPAD
     ldh [c], a
 rept 4
     ldh a, [c]
