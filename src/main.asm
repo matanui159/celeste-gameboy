@@ -34,6 +34,8 @@ charmap " ", 0
     db CART_ROM_MBC5
     ; ROM size
     db CART_ROM_32KB
+    ; Switch to this ROM size to support the PNG wrapper
+    ; db CART_ROM_128KB
     ; RAM size
     db CART_SRAM_NONE
     ; Destination code
