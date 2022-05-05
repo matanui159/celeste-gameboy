@@ -15,22 +15,10 @@ def OP_RET      equ $c9
 section "Map ROM", rom0
 
 
-;; Sets up the tile and the matching attributes from GenAttrs
-;; @param a: Tile ID
-;; @param l: Tile position
-;; @saved hl
-TileLoad:
-    ld b, high(wMapTiles)
-    ld c, l
-    ld [bc], a
-    ; Get the palette from the attributes
-    ld d, high(GenAttrs)
-    ld e, a
-    ld a, [de]
-    and a, OAMF_PALMASK
-    ; Write the palette to wMapAttrs
-    inc b
-    ld [bc], a
+;; Clears the update queue
+ClearQueue:
+    ld a, OP_RET
+    ld [wUpdateQueue], a
     ret
 
 
@@ -39,7 +27,7 @@ TileLoad:
 ;; @param bc: Source address to copy from
 ;; @effect hl: Destination end address
 ;; @saved bc
-MapCopy:
+CopyMap:
     ld de, MAP_X_B
 .loop:
     ; Copy over one row to VRAM
@@ -60,7 +48,7 @@ endr
 ;; @param bc: Source address to copy from
 ;; @effect a: Zero
 ;; @saved bc
-MapHDMA:
+CopyMapDMA:
     ld hl, rHDMA1
     ; Source address high byte
     ld a, b
@@ -85,41 +73,40 @@ MapLoad::
     ; TODO: if this is called mid-update we should somehow skip or restart the
     ;       update
 
-    ; Generate the map address before A gets overwritten. Each map is
-    ; page-aligned
+    ; Copy the map to our buffer
+    ld hl, wMapTiles
     add a, high(GenMaps)
-    ld h, a
-    ld l, 0
+    ld b, a
+    ; Both the map tiles and the generated maps are page-aligned
+    ld c, l
+    ld de, MAP_X_B * MAP_Y_B
+    call MemoryCopy
 
     ; Setup the return address for `load` functions
     ld bc, .loadReturn
     push bc
 
-    ; Iterate over the map. Since each map is exactly 1 page, we can end when
-    ; L becomes 0 again.
+    ; Load all the different tiles if needed
+    ; We do this in a seperate step from the initial copy so that tiles can
+    ; modify other tiles during load
+    ; HL is one page after `wMapTiles` due to the `MemoryCopy` effect. Due to
+    ; the map being one page in size, we can stop looping when L becomes 0.
+    dec h
 .loadLoop:
 
     ; Handle the tile. All the `load` functions must not override `hl`
     ld a, [hl]
     cp a, 1
     jp z, PlayerLoad
-    jr .defaultLoad
 
-.loadReturn:
-    ; Reuse the return address for later `load` functions
-    add sp, -2
-    ; Load tile-ID 0 in this index
-    xor a, a
-.defaultLoad:
-    call TileLoad
-
+.loadContinue:
     inc l
     jr nz, .loadLoop
+    ; Remove the return address from the stack
     pop bc
 
-    ; Clear the update queue since it's now out of date
-    ld a, OP_RET
-    ld [wUpdateQueue], a
+    ; Clear the update queue since we're going to be updating the whole screen
+    call ClearQueue
 
     ; Check which method to use for copying the map to VRAM
     ldh a, [hMainBoot]
@@ -133,7 +120,7 @@ MapLoad::
     ; Copy over the map while the LCD is disabled
     ld hl, _SCRN0
     ld bc, wMapTiles
-    call MapCopy
+    call CopyMap
     jr .copyEnd
 
 .cgbCopy:
@@ -144,22 +131,47 @@ MapLoad::
     ; Copy over the map tiles
     ld hl, wCgbTiles
     ld bc, wMapTiles
-    call MapCopy
-    ; Copy over the map attributes, HL is already incremented to point to the
-    ; next section, BC is still the same
-    inc b
-    call MapCopy
+    call CopyMap
+
+    ; Get the palettes from the attributes. HL is already incremented to point
+    ; to the next section, BC is still the same
+    ; D is the high byte for GenAttrs, E is the width of the map
+    ld de, GenAttrs | MAP_X_B
+.attrLoop:
+    ld a, [bc]
+    inc c
+    push de
+    ld e, a
+    ld a, [de]
+    pop de
+    and a, OAMF_PALMASK
+    ld [hl+], a
+    dec e
+    jr nz, .attrLoop
+    ; After each row we add the map width to the HL pointer
+    ld de, MAP_X_B
+    add hl, de
+    ; Setup the high byte for GenAttrs again
+    ld d, high(GenAttrs)
+    ; Loop if we have not reached the end of the map
+    ld a, c
+    or a, a
+    jr nz, .attrLoop
+
+    ; Setup registers for HDMA
+    ld bc, wCgbTiles
+    ; Low byte is 1 for switching V-bank, high byte is for `wCgbAttrs`
+    ld de, wCgbAttrs | 1
     ; Wait for V-blank
     call VideoWait
     ; Use DMA for the map tiles
-    ld bc, wCgbTiles
-    call MapHDMA
+    call CopyMapDMA
     ; Switch to VRAM bank 1
-    ld a, 1
+    ld a, e
     ldh [rVBK], a
     ; Use DMA for the map attributes, BC is the same from above
-    ld b, high(wCgbAttrs)
-    call MapHDMA
+    ld b, d
+    call CopyMapDMA
     ; Switch back to VRAM bank 0 using effect from above
     ldh [rVBK], a
 
@@ -172,23 +184,32 @@ MapLoad::
     ldh [rLCDC], a
     ret
 
+.loadReturn:
+    ; The return address for the `load` functions. We move it here so we don't
+    ; have to jump over it to escape the loop above.
+    ; Reuse the return address for later `load` functions
+    add sp, -2
+    jr .loadContinue
+
 
 ;; Initializes the map rendering and update routines
 MapInit::
-    ; Clear out the CGB buffers
-    ld hl, wCgbTiles
-    ld de, SCRN_VX_B * MAP_Y_B * 2
-    call MemoryClear
-
+    ; Clear the update queue so the first load doesn't do anything funky with
+    ; memory
+    call ClearQueue
     ; Clear out the tiles in screen 0
     ld hl, _SCRN0
     ld de, SCRN_VX_B * SCRN_VY_B
     call MemoryClear
 
-    ; Check if we have to clear attributes
+    ; Check if we have to clear attributes and CGB buffers
     ldh a, [hMainBoot]
     cp a, BOOTUP_A_CGB
     jr nz, .clearEnd
+    ; Clear out the CGB buffers
+    ld hl, wCgbTiles
+    ld de, SCRN_VX_B * MAP_Y_B * 2
+    call MemoryClear
     ; Swap to VRAM bank 1 and clear out the attributes
     ld a, 1
     ldh [rVBK], a
@@ -352,14 +373,11 @@ MapTileUpdate::
 section fragment "VBlank", rom0
 VBlankMap:
     call wUpdateQueue
-    ; Clear the queue
-    ld a, OP_RET
-    ld [wUpdateQueue], a
+    call ClearQueue
 
 
 section "Map WRAM", wram0, align[8]
 wMapTiles:: ds MAP_X_B * MAP_Y_B
-wMapAttrs:: ds MAP_X_B * MAP_Y_B
 wCgbTiles: ds SCRN_VX_B * MAP_Y_B
 wCgbAttrs: ds SCRN_VX_B * MAP_Y_B
 ; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`

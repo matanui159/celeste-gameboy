@@ -6,18 +6,24 @@ section "Player ROM", rom0
 
 ;; @param l: Tile position
 PlayerLoad::
-    call MapTilePosition
     push hl
+    ; Clear out the tile the player is at
+    xor a, a
+    call MapTileUpdate
+    ; Restore HL since the update overwrites it
+    pop hl
+    push hl
+    call MapTilePosition
     ld hl, wObjectPlayer
     ; Y
-    ld [hl], c
-    inc l
+    ld a, c
+    ld [hl+], a
     ; X
-    ld [hl], b
-    inc l
+    ld a, b
+    ld [hl+], a
     ; Tile ID
-    ld [hl], 1
-    inc l
+    ld a, 1
+    ld [hl+], a
     ; Attributes, palette index 0
     ld [hl], 0
 
