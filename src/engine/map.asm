@@ -269,7 +269,8 @@ MapTilePosition::
 
 ;; Finds the nearest tile to the provided position
 ;; @param bc: X and Y position
-;; @returns l: Tile position
+;; @returns %z: Set if a tile was found
+;; @returns  l: Tile position
 ;; @saved bc
 MapFindTileAt::
     ; Get the X scroll position
@@ -280,12 +281,14 @@ MapFindTileAt::
     ld a, b
     sub a, OAM_X_OFS
     add a, d
+    ; If the X is >=128 (highest bit set) the point is off the map
+    bit 7, a
+    ret nz
     ; Shift right by 3
     add a, a
     swap a
     and a, $0f
     ld l, a
-.capX:
 
     ; Get the Y scroll position
     ldh a, [rSCY]
@@ -295,24 +298,42 @@ MapFindTileAt::
     ld a, c
     sub a, OAM_Y_OFS
     add a, d
+    ; Check if the point is off the map
+    bit 7, a
+    ret nz
     ; Shift left by 1
     add a, a
     and a, $f0
-.capY:
     or a, l
     ld l, a
+    ; Make sure %z is set
+    xor a, a
     ret
 
 
-;; Gets the attributes of a tile
-;; @param l: Tile position
-;; @returns a: Attributes
-;; @saved l
-MapTileAttributes::
+;; Performs a collision with the tile closest to the provided position.
+;; Collision callbacks will be invoked and any flags will be returned.
+;; @param bc: X and Y position
+;; @returns a: Tile flags
+;; @saved bc
+MapCollideTileAt::
+    ; Find the tile and return if its off the map
+    call MapFindTileAt
+    ; We use LD instead or XOR so we don't overwrite the Z flag
+    ld a, 0
+    ret nz
     ; Get the tile ID
     ld h, high(wMapTiles)
     ld a, [hl]
-    ; Get the original attributes from the lookup table
+    ; Setup the return address for collisions
+    ld de, .return
+    push de
+
+    ; TODO: Handle collision callbacks
+
+    pop de
+.return:
+    ; Get the attributes from the lookup table
     ld d, high(GenAttrs)
     ld e, a
     ld a, [de]

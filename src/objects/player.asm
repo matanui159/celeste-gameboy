@@ -273,7 +273,7 @@ PlayerUpdate::
     ld b, [hl]
     ; ... to find if there is solid below
     inc c
-    call PhyscisPlayerTileFlags
+    call PhysicsCollidePlayer
     ; Save into HRAM and compare against the previous frame
     ld d, a
     ldh a, [hGroundFlags]
