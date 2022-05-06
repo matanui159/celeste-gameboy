@@ -19,10 +19,10 @@ CELESTE_OBJ = \
 	bin/src/engine/object.obj \
 	bin/src/engine/map.obj \
 	bin/src/engine/input.obj \
-	bin/src/engine/fragment.obj \
 	bin/src/objects/physics.obj \
 	bin/src/objects/player.obj \
 	bin/src/objects/smoke.obj \
+	bin/src/engine/fragment.obj \
 	# bin/gen/gen_wrapper.obj # Turns it into a mostly-valid PNG
 
 LUA = bin/celeste.lua

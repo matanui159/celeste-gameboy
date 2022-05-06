@@ -24,8 +24,8 @@ PlayerLoad::
     ; Tile ID
     ld a, 1
     ld [hl+], a
-    ; Attributes, palette index 1 for red hair
-    ld [hl], 1
+    ; Attributes, DMG OBP1, CGB we set the palette during first update
+    ld [hl], OAMF_PAL1
 
     ; Reset player and physics variables
     ld hl, wStart
@@ -368,27 +368,6 @@ PlayerUpdate::
 
 .moveAccel:
     call PhysicsAccelerate
-
-    ; -- facing --
-    ; We handle this now while we still have the speed in the registers
-    ; We skip this and keep the old facing value if the speed is 0
-    ld a, h
-    or a, a
-    jr nz, .updateFacing
-    ld a, l
-    or a, a
-    jr z, .facingEnd
-.updateFacing:
-    ; Clear the old flip flag
-    ld a, [wObjectPlayer + OAMA_FLAGS]
-    and a, ~OAMF_XFLIP
-    ; Set the flip flag if the speed is negative
-    bit 7, h
-    jr z, .facingRight
-    set OAMB_XFLIP, a
-.facingRight:
-    ld [wObjectPlayer + OAMA_FLAGS], a
-.facingEnd:
     ; Write the new speed X
     ld a, l
     ld b, h
@@ -484,10 +463,103 @@ PlayerUpdate::
 .dashEnd:
 
 .animate:
-    ; Naming this label now since this is where the animation code will go
+    ; -- animation --
+    ; Increment the sprite offset, calculate the expected sprite in B
+    ldh a, [hSpriteOffset]
+    inc a
+    ldh [hSpriteOffset], a
+    rra
+    rra
+    and a, $03
+    inc a
+    ld b, a
+
+    ; We calculate the new attributes into C using the palette and X facing
+    ; while also setting the DMG palette into D
+    ; Set the hair color
+    ld hl, wObjectPlayer + OAMA_FLAGS
+    ld a, [hl]
+    and a, ~OAMF_PALMASK
+    ld c, a
+    ldh a, [hDashCount]
+    ; We can compare against one so we can check less-than (0), equal (1),
+    ; or neither (2)
+    cp a, 1
+    ; If the hair is blue, palette 0, we don't have to OR anything
+    ; For DMG we do have to set D, but lets just set that here :)
+    ld d, %10_01_10_11
+    jr c, .hairEnd
+    ; Hair is red, palette 1. On DMG we set the highest color to white.
+    ld d, %00_01_10_11
+    set 0, c
+.hairEnd:
+    ; Save the DMG palette
+    ld a, d
+    ldh [hDMGPalette], a
+
+    ; -- facing --
+    ; We update facing now as part of animation, so that we can also detect if
+    ; the player is moving. Note that we don't use the player speed to detect
+    ; the facing and just use the buttons.
+    ldh a, [hInput]
+    bit PADB_RIGHT, a
+    jr z, .facingRightEnd
+    ; Facing right, don't flip
+    res OAMB_XFLIP, c
+    jr .facingEnd
+.facingRightEnd:
+    bit PADB_LEFT, a
+    jr z, .facingLeftEnd
+    ; Facing left, flip the sprite
+    set OAMB_XFLIP, c
+    jr .facingEnd
+.facingLeftEnd:
+    ; Neither facing left or right, don't update the flags but set the sprite as
+    ; stationary
+    ld b, 1
+.facingEnd:
+    ; Update the attributes and decrement HL for updating the sprite later
+    ld a, c
+    ld [hl-], a
+
+    ; If we are not on the ground, set the sprite to 3
+    ldh a, [hPlayerGroundFlags]
+    bit ATTRB_SOLID, a
+    jr nz, .animateGround
+    ld b, 3
+    jr .animateEnd
+.animateGround:
+    ; If the player is looking down, set the sprite to 6
+    ldh a, [hInput]
+    bit PADB_DOWN, a
+    jr z, .animateDownEnd
+    ld b, 6
+    jr .animateEnd
+.animateDownEnd:
+    ; If the player is looking up, set the sprite to 7
+    bit PADB_UP, a
+    ; Otherwise we just skip to the end using the existing sprite using the
+    ; movement state
+    jr z, .animateEnd
+    ld b, 7
+.animateEnd:
+    ; Update the sprite
+    ld [hl], b
 
     ; Get the physics engine to move the player using the speed
     jp PhysicsMovePlayer
+
+
+section fragment "VBlank", rom0
+VBlankPlayer:
+    ; Check if we are on DMG
+    ldh a, [hMainBoot]
+    cp a, BOOTUP_A_CGB
+    jr z, .end
+    ; Update the DMG palette
+    ldh a, [hDMGPalette]
+    ldh [rOBP1], a
+.end:
 
 
 section "Player WRAM", wram0
@@ -509,4 +581,6 @@ hJumpBuffer: db
 hGrace: db
 hDashCount: db
 hDashTime: db
+hSpriteOffset: db
+hDMGPalette: db
 hEnd:
