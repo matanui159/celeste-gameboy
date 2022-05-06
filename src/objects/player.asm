@@ -24,8 +24,8 @@ PlayerLoad::
     ; Tile ID
     ld a, 1
     ld [hl+], a
-    ; Attributes, palette index 0
-    ld [hl], 0
+    ; Attributes, palette index 1 for red hair
+    ld [hl], 1
 
     ; Reset player and physics variables
     ld hl, wStart

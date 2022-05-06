@@ -26,7 +26,7 @@ SmokeSpawn::
     ; Set random flip flags and palette
     ld a, d
     and a, OAMF_XFLIP | OAMF_YFLIP
-    or a, 1
+    or a, 7
     ld [hl-], a
     ; Set tile
     ld a, 29

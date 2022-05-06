@@ -71,5 +71,6 @@ int main(void) {
     printf("section \"Generated palettes\", romx, bank[1]\n");
     palettes_gen("GenPalettesBG", sizeof(gen_bg_palettes), gen_bg_palettes);
     palettes_gen("GenPalettesOBJ", sizeof(gen_obj_palettes), gen_obj_palettes);
+    palettes_gen("GenPalettesTitle", sizeof(gen_title_palettes), gen_title_palettes);
     return 0;
 }

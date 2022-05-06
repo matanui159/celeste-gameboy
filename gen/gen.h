@@ -77,37 +77,65 @@ static const gen_palette_t gen_bg_palettes[] = {
 
 static const gen_palette_t gen_obj_palettes[] = {
     {
-        0, // player
+        0, // player with blue hair
+        {0, 3, 15, 12, 1, 3, 7, 12}
+    },
+    {
+        1, // player with red hair
         {0, 3, 15, 8, 1, 3, 7, 8}
     },
     {
-        1, // clouds, smoke, wings, balloons, string
+        2, // player with white hair
+        {0, 3, 15, 7, 1, 3, 7, 7}
+    },
+    {
+        3, // player with green hair
+        {0, 3, 15, 11, 1, 3, 7, 11}
+    },
+    {
+        4, // clouds, smoke, wings, balloons, string
         {0, 8, 6, 7, 0, 8, 6, 7}
     },
     {
-        2, // fruit / strawberries
+        5, // fruit / strawberries
         {0, 3, 8, 9, 2, 11, 8, 9}
     },
     {
-        3, // chest and key
+        6, // chest and key
         {0, 8, 9, 10, 0, 8, 9, 10}
     },
     {
-        4, // orb
+        7, // orb
         {0, 0, 11, 7, 0, 0, 11, 7}
     }
 };
 #define O(i) (&gen_obj_palettes[i])
 
+static gen_palette_t gen_title_palettes[] = {
+    {
+        0, // title top half
+        {0, 12, 13, 6, 0, 12, 13, 6}
+    },
+    {
+        1, // title bottom half
+        {0, 1, 12, 6, 0, 1, 12, 6}
+    },
+    {
+        2, // title flash colors
+        {7, 2, 1, 0, 7, 2, 1, 0}
+    }
+};
+#define T(i) (&gen_title_palettes[i])
+
 static const gen_palette_t *gen_tile_palettes[] = {
-B(0),O(0),O(0),O(0),O(0),O(0),O(0),O(0),O(3),O(3),O(3),O(1),O(1),O(1),O(1),O(1),
-B(0),B(1),B(2),B(2),O(3),____,O(1),B(2),B(2),B(2),O(2),B(1),O(2),O(1),O(1),O(1),
-B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(1),B(3),O(1),O(1),O(1),
+B(0),O(1),O(1),O(1),O(1),O(1),O(1),O(1),O(6),O(6),O(6),O(4),O(4),O(4),O(4),O(4),
+B(0),B(1),B(2),B(2),O(6),____,O(4),B(2),B(2),B(2),O(5),B(1),O(5),O(4),O(4),O(4),
+B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(1),B(3),O(4),O(4),O(4),
 B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(0),B(1),B(3),B(3),B(4),B(3),
-B(0),B(0),B(0),B(0),B(0),B(0),B(5),B(5),B(0),____,____,____,____,____,____,____,
-B(0),B(0),B(0),B(0),B(0),B(0),B(5),B(5),B(0),____,____,____,____,____,____,____,
-B(6),B(6),B(0),B(0),B(0),B(0),O(4),B(0),B(0),____,____,____,____,____,____,____,
-B(6),B(6),B(0),B(0),B(0),B(0),B(7),B(7),B(7),____,____,____,____,____,____,____
+B(0),B(0),B(0),B(0),B(0),B(0),B(5),B(5),B(0),T(0),T(0),T(0),T(0),T(0),T(0),T(0),
+B(0),B(0),B(0),B(0),B(0),B(0),B(5),B(5),B(0),T(0),T(0),T(0),T(0),T(0),T(0),T(0),
+B(6),B(6),B(0),B(0),B(0),B(0),O(7),B(0),B(0),T(0),T(0),T(0),T(0),T(0),T(0),T(0),
+B(6),B(6),B(0),B(0),B(0),B(0),B(7),B(7),B(7),T(1),T(1),T(1),T(1),T(1),T(1),T(1)
 };
 
 #endif
