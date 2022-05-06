@@ -3,6 +3,14 @@ include "../hardware.inc"
 section "Input ROM", rom0
 
 
+;; Clear out the input flags
+InputInit::
+    xor a, a
+    ldh [hInput], a
+    ldh [hInputNext], a
+    ret
+
+
 ;; Updates the input variables in HRAM
 InputUpdate::
     ld c, low(rP1)

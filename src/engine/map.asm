@@ -180,7 +180,7 @@ MapLoad::
     ; Enable LCD and return
     ; We still do this on CGB since if this is the first call, the LCD would
     ; already be disabled
-    ld a, LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8000 | LCDCF_ON
+    ld a, LCDCF_BGON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a
     ret
 

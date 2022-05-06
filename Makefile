@@ -18,6 +18,7 @@ CELESTE_OBJ = \
 	bin/src/engine/video.obj \
 	bin/src/engine/object.obj \
 	bin/src/engine/map.obj \
+	bin/src/engine/hblank.obj \
 	bin/src/engine/input.obj \
 	bin/src/objects/physics.obj \
 	bin/src/objects/player.obj \

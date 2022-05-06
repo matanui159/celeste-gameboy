@@ -22,7 +22,7 @@ charmap " ", 0
     ; Title
     db "CELESTE    "
     ; Manufacturer code, which the "Purpose and Deeper Meaning [is] unknown"
-    ; Instead, we use it to indicate the open-source license
+    ; Instead, I'm using it to indicate the open-source license
     db "MIT "
     ; CGB flag
     db CART_COMPATIBLE_DMG_GBC
@@ -42,8 +42,8 @@ charmap " ", 0
     db CART_DEST_NON_JAPANESE
     ; Old license code
     db $33
-    ; Version (1.0)
-    db $10
+    ; Version (0.1)
+    db $01
     ; Checksum
     ds 3
     ; Sneaking in a little backlink to the Github repo >_>
@@ -65,8 +65,10 @@ Main:
     call ObjectsInit
     call MapInit
     call SmokeInit
+    call HBlankInit
+    call InputInit
 
-    ld a, IEF_VBLANK
+    ld a, IEF_VBLANK | IEF_STAT
     ldh [rIE], a
     xor a, a
     ldh [rIF], a
