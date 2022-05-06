@@ -4,13 +4,6 @@ include "../attrs.inc"
 section "Physics ROM", rom0
 
 
-;; Resets the physics variables
-PhysicsLoad::
-    ld hl, hPlayerRemX
-    ld de, hEnd - hPlayerRemX
-    jp MemoryClear
-
-
 ;; Updates a value until it meets a target
 ;; This is called `appr` in the original source code, likely short for
 ;; appreciate.
@@ -67,7 +60,7 @@ PhysicsAccelerate::
 ;; @param bc: Player position
 ;; @returns a: Tile flags
 ;; @saved bc
-PhysicsCollidePlayer::
+CollideTilesAtPlayer:
     ; First we check the top-left corner, near the X/Y position
     ; The player has a hitbox offset of 1, 3
     inc b
@@ -119,8 +112,36 @@ PhysicsCollidePlayer::
     ret
 
 
+;; Updates the ground flags and spawns a smoke particle if needed
+;; @param bc: Player position
+;; @param  a: Ground flags
+;; @saved bc
+;; @saved  a
+UpdateGroundFlags::
+    ld hl, hPlayerGroundFlags
+    ld d, [hl]
+    ld [hl], a
+    ; Check if we were not on the ground the previous frame
+    bit ATTRB_SOLID, d
+    ret nz    
+    ; Check if we are currently on the ground
+    bit ATTRB_SOLID, a
+    ret z
+    ; The player has just landed, spawn a smoke particle
+    push af
+    push bc
+    ; The smoke particle has an offset of 0,+4
+    ld a, c
+    add a, 4
+    ld c, a
+    call SmokeSpawn
+    pop bc
+    pop af
+    ret
+
+
 ;; @param h: X movement amount
-moveX:
+MovePlayerX:
     ; Note that unlike the orignal Celeste code, this port does movement as a
     ; single step. If that single step collides with something, we align the
     ; player to the closest tile.
@@ -141,7 +162,7 @@ moveX:
     ; There seems to be a bug in the original source code that makes it do one
     ; more step than it needs to. We replicate that bug here
     inc b
-    call PhysicsCollidePlayer
+    call CollideTilesAtPlayer
     ; Check the solid attribute
     bit ATTRB_SOLID, a
     jr z, .return
@@ -158,7 +179,7 @@ moveX:
     ; Moving left (negative)
     ; Replicate bug
     dec b
-    call PhysicsCollidePlayer
+    call CollideTilesAtPlayer
     ; Check the solid attribute
     bit ATTRB_SOLID, a
     jr z, .return
@@ -187,7 +208,7 @@ moveX:
 
 
 ;; @param h: Y movement amount
-moveY:
+MovePlayerY:
     ; Get the position
     ld a, [wObjectPlayer + OAMA_X]
     ld b, a
@@ -202,7 +223,9 @@ moveY:
     ; Moving down (positive)
     ; Replicate bug
     inc c
-    call PhysicsCollidePlayer
+    call CollideTilesAtPlayer
+    ; Update the ground flags
+    call UpdateGroundFlags
     ; Check if solid
     bit ATTRB_SOLID, a
     jr z, .return
@@ -216,9 +239,12 @@ moveY:
 
 .moveUp:
     ; Moving up (negative)
+    ; If we are moving upwards, we reset the ground flags
+    xor a, a
+    ldh [hPlayerGroundFlags], a
     ; Replicate bug
     dec c
-    call PhysicsCollidePlayer
+    call CollideTilesAtPlayer
     ; Check if solid
     bit ATTRB_SOLID, a
     jr z, .return
@@ -264,7 +290,7 @@ PhysicsMovePlayer::
     ; If the movement amount is non-zero, move in the X direction
     ld a, h
     or a, a
-    call nz, moveX
+    call nz, MovePlayerX
 
     ; -- [y] get move amount --
     ; Read the speed Y
@@ -282,11 +308,14 @@ PhysicsMovePlayer::
     ; If the movement is non-zero, move in the Y direction
     ld a, h
     or a, a
-    jp nz, moveY
-    ret
-
-
-section "Physics HRAM", hram
-hPlayerRemX: db
-hPlayerRemY: db
-hEnd:
+    ; This call will return after it is finished
+    jp nz, MovePlayerY
+    ; If the speed is zero, we still do a check to update the ground flags
+    ld hl, wObjectPlayer
+    ld a, [hl+]
+    ld c, a
+    ld b, [hl]
+    inc c
+    call CollideTilesAtPlayer
+    dec c
+    jp UpdateGroundFlags

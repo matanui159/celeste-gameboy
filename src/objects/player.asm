@@ -28,15 +28,13 @@ PlayerLoad::
     ld [hl], 0
 
     ; Reset player and physics variables
-    ld hl, wPlayerSpeedX
-    ld de, wEnd - wPlayerSpeedX
+    ld hl, wStart
+    ld de, wEnd - wStart
     call MemoryClear
     ; Clear the HRAM variables
-    ld hl, hGroundFlags
-    ld de, hEnd - hGroundFlags
+    ld hl, hStart
+    ld de, hEnd - hStart
     call MemoryClear
-    ; Clear the physics variables
-    call PhysicsLoad
 
     ; Set the inital dash count
     ; TODO: make this modifiable using a "max dash" variable
@@ -265,28 +263,9 @@ PlayerUpdate::
 .jumpBufferEnd:
     ldh [hJumpBuffer], a
 
-    ; Update the ground flags
-    ; Get the player position...
-    ld hl, wObjectPlayer
-    ld a, [hl+]
-    ld c, a
-    ld b, [hl]
-    ; ... to find if there is solid below
-    inc c
-    call PhysicsCollidePlayer
-    ; Save into HRAM and compare against the previous frame
-    ld d, a
-    ldh a, [hGroundFlags]
-    cpl
-    and a, d
-    ; We also save this in a register so we can quickly check it later
-    ld e, a
-    ldh [hGroundFlagsNext], a
-    ld a, d
-    ldh [hGroundFlags], a
-
     ; Update the grace period
     ; Check if we are on solid ground
+    ldh a, [hPlayerGroundFlags]
     bit ATTRB_SOLID, a
     jr nz, .onGround
     ; If the player is not on the ground, decrement grace period
@@ -303,17 +282,6 @@ PlayerUpdate::
     ld a, 6
 .graceEnd:
     ldh [hGrace], a
-
-    ; Check if we have just landed
-    bit ATTRB_SOLID, e
-    jr z, .landEnd
-    ; If we have just landed, spawn a smoke particle at offset 0,+4
-    ; We already have the player positon in BC with an offset of 0,+1 from above
-    ld a, c
-    add a, 3
-    ld c, a
-    call SmokeSpawn
-.landEnd:
 
     ; If we are in a dash, apply the acceleration for 4 frames
     ldh a, [hDashTime]
@@ -347,7 +315,7 @@ PlayerUpdate::
     ; If the player is on the ground the acceleration is 0.6
     ld de, 0.6 >> 8
     ; Check if the player is in the air
-    ldh a, [hGroundFlags]
+    ldh a, [hPlayerGroundFlags]
     bit ATTRB_SOLID, a
     jr nz, .moveAirEnd
     ; If the player is in the air, the acceleration is 0.4
@@ -523,6 +491,7 @@ PlayerUpdate::
 
 
 section "Player WRAM", wram0
+wStart:
 wPlayerSpeedX:: dw
 wPlayerSpeedY:: dw
 wDashTargetX: dw
@@ -532,8 +501,10 @@ wDashAccelY: dw
 wEnd:
 
 section "Player HRAM", hram
-hGroundFlags: db
-hGroundFlagsNext: db
+hStart:
+hPlayerRemX:: db
+hPlayerRemY:: db
+hPlayerGroundFlags:: db
 hJumpBuffer: db
 hGrace: db
 hDashCount: db
