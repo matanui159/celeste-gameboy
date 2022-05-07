@@ -256,6 +256,10 @@ PlayerUpdate::
     cp a, 30
     jr nc, .nextLevelEnd
     ld b, a
+    ; DEBUG: pressing start skips the current level
+    ldh a, [hInputNext]
+    bit PADB_START, a
+    jr nz, .nextLevel
     ; Calculate the real Y position relative to the map by removing offset
     ldh a, [rSCY]
     ld c, a
@@ -267,6 +271,7 @@ PlayerUpdate::
     jr c, .nextLevelEnd
     cp a, -4
     jr nc, .nextLevelEnd
+.nextLevel:
     ; Go to the next map
     ld a, b
     inc a
@@ -571,7 +576,40 @@ PlayerUpdate::
     ld [hl], b
 
     ; Get the physics engine to move the player using the speed
-    jp PhysicsMovePlayer
+    call PhysicsMovePlayer
+
+    ; Prevent movement off the left and right edges
+    ldh a, [rSCX]
+    ld b, a
+    ld hl, wObjectPlayer + OAMA_X
+    ld a, [hl]
+    ; Undo offsets
+    sub a, OAM_X_OFS
+    add a, b
+    ; Use 128+64 as a middlepoint
+    cp a, $c0
+    jr nc, .clampNeg
+    ; Check if we are larger than 121
+    cp a, 121
+    ret c
+    ; Clamp to 121
+    ld a, 121
+    jr .clamp
+.clampNeg:
+    ; If we are off the left side, we don't have to check how far since the min
+    ; X position is -1, which is the first negative value
+    ld a, -1
+.clamp:
+    ; Reapply offsets and update X position
+    sub a, b
+    add a, OAM_X_OFS
+    ld [hl], a
+    ; Reset the speed if the player was clamped to a position
+    xor a, a
+    ld hl, wPlayerSpeedX
+    ld [hl+], a
+    ld [hl+], a
+    ret
 
 
 section fragment "VBlank", rom0
