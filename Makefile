@@ -9,6 +9,7 @@ DEBUG_FLAGS = -p
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
 	bin/gen/gen_tiles.obj \
+	bin/gen/gen_text.obj \
 	bin/gen/gen_palettes.obj \
 	bin/gen/gen_attrs.obj \
 	bin/gen/gen_maps.obj \

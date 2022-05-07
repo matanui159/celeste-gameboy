@@ -53,7 +53,7 @@ VideoInit::
     ; Copy over the tile data
     ld hl, _VRAM
     ld bc, GenTiles
-    ld de, GenTiles.end - GenTiles
+    ld de, TilesEnd - GenTiles
     call MemoryCopy
 
     ; Check if we are on CGB or DMG

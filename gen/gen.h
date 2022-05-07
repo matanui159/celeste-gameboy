@@ -138,4 +138,25 @@ B(7),B(7),B(0),B(0),B(0),B(0),O(7),B(0),B(0),T(0),T(0),T(0),T(0),T(0),T(0),T(0),
 B(7),B(7),B(0),B(0),B(0),B(0),O(7),O(7),O(7),T(1),T(1),T(1),T(1),T(1),T(1),T(1)
 };
 
+typedef struct gen_text_t {
+    const char *name; // The in-code name for this like
+    const char *text; // The line of text, must have an even length
+} gen_text_t;
+
+static gen_text_t gen_text_lines[] = {
+    {"TextTitle0", "a+b "},
+    {"TextTitle1", "maddy thorson "},
+    {"TextTitle2", "noel berry"},
+    {"TextTitle3", "jasmine minter"},
+    {"TextRoomHeight", " m"},
+    {"TextRoomOldSite", "old site"},
+    {"TextRoomSummit", "summit"},
+    {"TextTimeSeperator", "::"},
+    {"TextOldSite0", "-- celeste mountain --"},
+    {"TextOldSite1", "this memorial to those"},
+    {"TextOldSite2", " perished on the climb"},
+    {"TextSummitScore", " x"},
+    {"TextSummitDeaths", "deaths: "},
+};
+
 #endif

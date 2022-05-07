@@ -11,7 +11,7 @@ static uint8_t tile_get_index(const gen_palette_t *pal, uint8_t color) {
 
 int main(void) {
     gen_load();
-    printf("section \"Generated tiles\", romx, bank[1]\n");
+    printf("section fragment \"Tiles\", romx, bank[1]\n");
     printf("GenTiles::");
     for (size_t i = 0; i < 128; i += 1) {
         const gen_palette_t *pal = gen_tile_palettes[i];
@@ -32,6 +32,5 @@ int main(void) {
             data += 64;
         }
     }
-    printf(".end::\n");
     return 0;
 }

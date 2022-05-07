@@ -45,7 +45,7 @@ static void palettes_gen(
     size_t palette_size,
     const gen_palette_t *palettes
 ) {
-    printf("%s::\n", label);
+    printf("\n%s::\n", label);
     size_t palette_count = palette_size / sizeof(gen_palette_t);
     for (size_t p = 0; p < palette_count; p += 1) {
         const gen_palette_t *pal = &palettes[p];
@@ -68,7 +68,7 @@ static void palettes_gen(
 
 int main(void) {
     gen_load();
-    printf("section \"Generated palettes\", romx, bank[1]\n");
+    printf("section \"Generated palettes\", romx, bank[1]");
     palettes_gen("GenPalettesBG", sizeof(gen_bg_palettes), gen_bg_palettes);
     palettes_gen("GenPalettesOBJ", sizeof(gen_obj_palettes), gen_obj_palettes);
     palettes_gen("GenPalettesTitle", sizeof(gen_title_palettes), gen_title_palettes);
