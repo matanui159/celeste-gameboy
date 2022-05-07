@@ -13,6 +13,7 @@ def OP_LD_A16_A equ $ea
 def OP_RET      equ $c9
 
 section "Map ROM", rom0
+; TODO: maybe all this should be renamed to "room" to match the original code
 
 
 ;; Clears the update queue
@@ -70,9 +71,7 @@ CopyMapDMA:
 
 ;; @param a: Map ID
 MapLoad::
-    ; TODO: if this is called mid-update we should somehow skip or restart the
-    ;       update
-
+    ldh [hMapIndex], a
     ; Copy the map to our buffer
     ld hl, wMapTiles
     add a, high(GenMaps)
@@ -403,3 +402,7 @@ wCgbTiles: ds SCRN_VX_B * MAP_Y_B
 wCgbAttrs: ds SCRN_VX_B * MAP_Y_B
 ; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`
 wUpdateQueue: ds MAP_UPDATES * 5 + 1
+
+
+section "Map HRAM", hram
+hMapIndex:: db

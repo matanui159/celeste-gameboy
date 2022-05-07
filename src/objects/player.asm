@@ -249,6 +249,30 @@ DashAccelerate:
 
 ;; Update the player object
 PlayerUpdate::
+    ; -- next level --
+    ; TODO: handle bottom player death
+    ; We don't handle finishing levels or dying in map 30
+    ldh a, [hMapIndex]
+    cp a, 30
+    jr nc, .nextLevelEnd
+    ld b, a
+    ; Calculate the real Y position relative to the map by removing offset
+    ldh a, [rSCY]
+    ld c, a
+    ld a, [wObjectPlayer + OAMA_Y]
+    sub a, OAM_Y_OFS
+    add a, c
+    ; We differentiate between >128 and <0 by using 128+64 as a midpoint
+    cp a, $c0
+    jr c, .nextLevelEnd
+    cp a, -4
+    jr nc, .nextLevelEnd
+    ; Go to the next map
+    ld a, b
+    inc a
+    call MapLoad
+.nextLevelEnd:
+
     ; Update the jump buffer
     ldh a, [hInputNext]
     bit PADB_A, a
