@@ -60,12 +60,12 @@ VBlankObjects:
 ; These sections have specific addresses so we can keep the space between them
 ; empty
 section "Objects WRAM", wram0[$c000]
-wObjectsSmoke:: ds 10 * sizeof_OAM_ATTRS
+wObjectsSmoke:: ds 9 * sizeof_OAM_ATTRS
 .end::
-wObjectPlayer:: ds sizeof_OAM_ATTRS
 wObjectsFruit:: ds 3 * sizeof_OAM_ATTRS
-wObjects:: ds 26 * sizeof_OAM_ATTRS
+wObjects:: ds 20 * sizeof_OAM_ATTRS
 .end::
+wObjectPlayer:: ds 8 * sizeof_OAM_ATTRS
 
 ; Extra data for whatever purpose the object desires
 section "Objects data", wram0[$c100]

@@ -144,11 +144,9 @@ typedef struct gen_text_t {
 } gen_text_t;
 
 static gen_text_t gen_text_lines[] = {
-    {"TextTitle0", "a+b "},
-    {"TextTitle1", "maddy thorson "},
+    {"TextTitle0", " a+b"},
+    {"TextTitle1", " maddy thorson"},
     {"TextTitle2", "noel berry"},
-    {"TextTitle3", "gameboy port by "},
-    {"TextTitle4", "jasmine minter"},
     {"TextRoomHeight", " m"},
     {"TextRoomOldSite", "old site"},
     {"TextRoomSummit", "summit"},
@@ -156,7 +154,7 @@ static gen_text_t gen_text_lines[] = {
     {"TextOldSite0", "-- celeste mountain --"},
     {"TextOldSite1", "this memorial to those"},
     {"TextOldSite2", " perished on the climb"},
-    {"TextSummitScore", " x"},
+    {"TextSummitScore", "x "},
     {"TextSummitDeaths", "deaths: "},
 };
 

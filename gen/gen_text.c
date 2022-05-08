@@ -17,6 +17,16 @@ static uint8_t text_find_index(text_pair_t *pairs, const text_pair_t pr) {
     return i;
 }
 
+static void text_print_halfrow(uint8_t *font, uint8_t c, size_t y) {
+    size_t tile_x = c % 16;
+    size_t tile_y = c / 16;
+    uint8_t *data = &font[((tile_y * 8 + y - 2) * 16 + tile_x) * 8];
+    for (size_t x = 0; x < 4; x += 1) {
+        // TODO: compress this data down to 1-bit per pixel
+        printf(data[x] < 128 ? "0" : "3");
+    }
+}
+
 int main(void) {
     gen_load();
     text_pair_t pairs[256];
@@ -35,15 +45,16 @@ int main(void) {
     size_t line_count = sizeof(gen_text_lines) / sizeof(gen_text_t);
     for (size_t i = 0; i < line_count; i += 1) {
         const gen_text_t *text = &gen_text_lines[i];
-        printf("%s:: db ", text->name);
+        printf("%s::\n", text->name);
+        printf("    db ");
         for (const char *line = text->text; *line != '\0'; line += 2) {
             if (line != text->text) {
                 printf(", ");
             }
             uint8_t tile = text_find_index(pairs, line);
-            printf("$%02x", (tile + 0x80) & 0xff);
+            printf("$%02x", (tile + 0x84) & 0xff);
         }
-        printf("\n");
+        printf("\n.end::\n");
     }
 
     int width, height;
@@ -59,19 +70,8 @@ int main(void) {
         printf("\n");
         for (size_t y = 0; y < 8; y += 1) {
             printf("    dw `");
-            size_t tile_x = pr[0] % 16;
-            size_t tile_y = pr[0] / 16;
-            uint8_t *data = &font[((tile_y * 8 + y) * 16 + tile_x) * 8];
-            for (size_t x = 0; x < 4; x += 1) {
-                // TODO: compress this data down to 1-bit per pixel
-                printf(data[x] < 128 ? "0" : "3");
-            }
-            tile_x = pr[1] % 16;
-            tile_y = pr[1] / 16;
-            data = &font[((tile_y * 8 + y) * 16 + tile_x) * 8];
-            for (size_t x = 0; x < 4; x += 1) {
-                printf(data[x] < 128 ? "0" : "3");
-            }
+            text_print_halfrow(font, pr[0], y);
+            text_print_halfrow(font, pr[1], y);
             printf("\n");
         }
     }
