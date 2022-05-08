@@ -1,33 +1,22 @@
+include "player.inc"
 include "../hardware.inc"
 include "../attrs.inc"
 
 section "Player ROM", rom0
 
 
-;; @param l: Tile position
-PlayerLoad::
-    push hl
-    ; Clear out the tile the player is at
+;; Removes the player
+PlayerClear::
+    ; Set the player type to NONE (0)
     xor a, a
-    call MapTileUpdate
-    ; Restore HL since the update overwrites it
-    pop hl
-    push hl
-    call MapTilePosition
-    ld hl, wObjectPlayer
-    ; Y
-    ld a, c
-    ld [hl+], a
-    ; X
-    ld a, b
-    ld [hl+], a
-    ; Tile ID
-    ld a, 1
-    ld [hl+], a
-    ; Attributes, DMG OBP1, CGB we set the palette during first update
-    ld [hl], OAMF_PAL1
+    ldh [hPlayerType], a
+    ret
 
-    ; Reset player and physics variables
+
+;; Spawns the player. Does not take any input and assumes the player sprite
+;; is already in the correct position (eg. from player_spawn).
+PlayerSpawn::
+    ; Clear the WRAM variables
     ld hl, wStart
     ld de, wEnd - wStart
     call MemoryClear
@@ -36,6 +25,12 @@ PlayerLoad::
     ld de, hEnd - hStart
     call MemoryClear
 
+    ; Switch the type to a normal player
+    ld a, PLAYER_NORMAL
+    ldh [hPlayerType], a
+    ; Assume that the player is on the ground
+    ld a, 1 << ATTRB_SOLID
+    ldh [hPlayerGroundFlags], a
     ; Set the inital dash count
     ; TODO: make this modifiable using a "max dash" variable
     ld a, 1
@@ -249,6 +244,16 @@ DashAccelerate:
 
 ;; Update the player object
 PlayerUpdate::
+    ; Handle other player variants, this code only updates the "normal" state
+    ldh a, [hPlayerType]
+    ; Exit now if there is no player
+    or a, a
+    ret z
+    ; Check other 3 states in a single compare
+    cp a, PLAYER_SPAWN
+    jp z, PlayerSpawnUpdate
+    ; jp nc, PlayerDeadUpdate
+
     ; -- next level --
     ; TODO: handle bottom player death
     ; We don't handle finishing levels or dying in map 30
@@ -276,6 +281,9 @@ PlayerUpdate::
     ld a, b
     inc a
     call MapLoad
+    ; Loading the map likely switched to the spawn state, restart the update
+    ; routine
+    jr PlayerUpdate
 .nextLevelEnd:
 
     ; Update the jump buffer
@@ -493,43 +501,20 @@ PlayerUpdate::
 
 .animate:
     ; -- animation --
-    ; Increment the sprite offset, calculate the expected sprite in B
-    ldh a, [hSpriteOffset]
-    inc a
-    ldh [hSpriteOffset], a
+    ; Use the frame counter to get the expected walking animation frame in B
+    ldh a, [hMainFrame]
     rra
     rra
     and a, $03
     inc a
     ld b, a
 
-    ; We calculate the new attributes into C using the palette and X facing
-    ; while also setting the DMG palette into D
-    ; Set the hair color
-    ld hl, wObjectPlayer + OAMA_FLAGS
-    ld a, [hl]
-    and a, ~OAMF_PALMASK
-    ld c, a
-    ldh a, [hDashCount]
-    ; We can compare against one so we can check less-than (0), equal (1),
-    ; or neither (2)
-    cp a, 1
-    ; If the hair is blue, palette 0, we don't have to OR anything
-    ; For DMG we do have to set D, but lets just set that here :)
-    ld d, %10_01_10_11
-    jr c, .hairEnd
-    ; Hair is red, palette 1. On DMG we set the highest color to white.
-    ld d, %00_01_10_11
-    set 0, c
-.hairEnd:
-    ; Save the DMG palette
-    ld a, d
-    ldh [hDMGPalette], a
-
     ; -- facing --
     ; We update facing now as part of animation, so that we can also detect if
     ; the player is moving. Note that we don't use the player speed to detect
     ; the facing and just use the buttons.
+    ld hl, wObjectPlayer + OAMA_FLAGS
+    ld c, [hl]
     ldh a, [hInput]
     bit PADB_RIGHT, a
     jr z, .facingRightEnd
@@ -591,7 +576,7 @@ PlayerUpdate::
     jr nc, .clampNeg
     ; Check if we are larger than 121
     cp a, 121
-    ret c
+    jr c, .clampEnd
     ; Clamp to 121
     ld a, 121
     jr .clamp
@@ -609,22 +594,15 @@ PlayerUpdate::
     ld hl, wPlayerSpeedX
     ld [hl+], a
     ld [hl+], a
-    ret
+.clampEnd:
+
+    ; Update the hair palette
+    ldh a, [hDashCount]
+    ld b, a
+    jp PlayerHairPalette
 
 
-section fragment "VBlank", rom0
-VBlankPlayer:
-    ; Check if we are on DMG
-    ldh a, [hMainBoot]
-    cp a, BOOTUP_A_CGB
-    jr z, .end
-    ; Update the DMG palette
-    ldh a, [hDMGPalette]
-    ldh [rOBP1], a
-.end:
-
-
-section "Player WRAM", wram0
+section union "Player WRAM", wram0
 wStart:
 wPlayerSpeedX:: dw
 wPlayerSpeedY:: dw
@@ -634,7 +612,8 @@ wDashAccelX: dw
 wDashAccelY: dw
 wEnd:
 
-section "Player HRAM", hram
+section union "Player HRAM", hram
+hPlayerType: db
 hStart:
 hPlayerRemX:: db
 hPlayerRemY:: db
@@ -643,6 +622,5 @@ hJumpBuffer: db
 hGrace: db
 hDashCount: db
 hDashTime: db
-hSpriteOffset: db
 hDMGPalette: db
 hEnd:

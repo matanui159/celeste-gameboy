@@ -41,7 +41,7 @@ int main(void) {
                 printf(", ");
             }
             uint8_t tile = text_find_index(pairs, line);
-            printf("$%02x", tile);
+            printf("$%02x", (tile + 0x80) & 0xff);
         }
         printf("\n");
     }

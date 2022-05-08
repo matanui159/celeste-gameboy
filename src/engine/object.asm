@@ -20,16 +20,27 @@ endl
 
 ;; Initializes the object rendering
 ObjectsInit::
-    ; Clear the OAM source
-    ld hl, wObjectsSmoke
-    ld de, wObjects.end - wObjectsSmoke
-    call MemoryClear
-
     ; Copy over the DMA function to HRAM
     ld hl, hObjectDMA
     ld bc, ObjectDMA
     ld de, hObjectDMA.end - hObjectDMA
     jp MemoryCopy
+
+
+;; Clears all the objects
+ObjectsClear::
+    ; Every object needs both the Y position (offset 0) and sprite (offset 2)
+    ; cleared. Thus we can optimise this by repeating a loop of clearing and
+    ; incrementing twice, and doing it twice for each object.
+    xor a, a
+    ld hl, wObjectsSmoke
+    ld b, OAM_COUNT * 2
+.loop:
+    ld [hl+], a
+    inc l
+    dec b
+    jr nz, .loop
+    ret
 
 
 section fragment "VBlank", rom0

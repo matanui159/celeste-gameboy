@@ -72,10 +72,16 @@ CopyMapDMA:
 ;; @param a: Map ID
 MapLoad::
     ldh [hMapIndex], a
+    ; Calculate the target address high-byte now and put into D
+    add a, high(GenMaps)
+    ld d, a
+    ; Clear the objects
+    call ObjectsClear
+    call PlayerClear
+
     ; Copy the map to our buffer
     ld hl, wMapTiles
-    add a, high(GenMaps)
-    ld b, a
+    ld b, d
     ; Both the map tiles and the generated maps are page-aligned
     ld c, l
     ld de, MAP_X_B * MAP_Y_B
@@ -96,7 +102,7 @@ MapLoad::
     ; Handle the tile. All the `load` functions must not override `hl`
     ld a, [hl]
     cp a, 1
-    jp z, PlayerLoad
+    jp z, PlayerSpawnLoad
 
 .loadContinue:
     inc l

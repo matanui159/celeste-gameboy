@@ -23,6 +23,8 @@ CELESTE_OBJ = \
 	bin/src/engine/input.obj \
 	bin/src/objects/physics.obj \
 	bin/src/objects/player.obj \
+	bin/src/objects/player_hair.obj \
+	bin/src/objects/player_spawn.obj \
 	bin/src/objects/smoke.obj \
 	bin/src/engine/fragment.obj \
 	# bin/gen/gen_wrapper.obj # Turns it into a mostly-valid PNG

@@ -59,6 +59,9 @@ Main:
     ldh [hMainBoot], a
     ; Setup stack to point to the top of memory
     ld sp, $e000
+    ; Reset the frame counter
+    xor a, a
+    ldh [hMainFrame], a
 
     call RandomInit
     call VideoInit
@@ -75,6 +78,9 @@ Main:
     ei
 
 .loop:
+    ; Increment the frame counter
+    ld hl, hMainFrame
+    inc [hl]
     ; Add more entropy to the randomiser
     call Random
     call InputUpdate
@@ -88,3 +94,4 @@ Main:
 
 section "Main HRAM", hram
 hMainBoot:: db
+hMainFrame:: db
