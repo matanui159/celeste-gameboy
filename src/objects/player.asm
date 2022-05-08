@@ -252,19 +252,20 @@ PlayerUpdate::
     ; Check other 3 states in a single compare
     cp a, PLAYER_SPAWN
     jp z, PlayerSpawnUpdate
-    ; jp nc, PlayerDeadUpdate
+    jp nc, PlayerDeathUpdate
 
-    ; -- next level --
-    ; TODO: handle bottom player death
     ; We don't handle finishing levels or dying in map 30
     ldh a, [hMapIndex]
     cp a, 30
-    jr nc, .nextLevelEnd
+    jr nc, .checkEndY
     ld b, a
     ; DEBUG: pressing start skips the current level
     ldh a, [hInputNext]
     bit PADB_START, a
-    jr nz, .nextLevel
+    jr nz, .loadNextLevel
+    ; DEBUG: pressing select kills the player
+    bit PADB_SELECT, a
+    jr nz, .killPlayer
     ; Calculate the real Y position relative to the map by removing offset
     ldh a, [rSCY]
     ld c, a
@@ -273,10 +274,22 @@ PlayerUpdate::
     add a, c
     ; We differentiate between >128 and <0 by using 128+64 as a midpoint
     cp a, $c0
-    jr c, .nextLevelEnd
-    cp a, -4
-    jr nc, .nextLevelEnd
+    jr nc, .nextLevel
+
+    ; -- bottom death --
+    ; Kill the player if they are below the map
+    cp a, $80
+    jr c, .checkEndY
+.killPlayer:
+    call PlayerDeathKill
+    ; This will switch to the death state, so finish the update there
+    jp PlayerDeathUpdate
+
 .nextLevel:
+    ; -- next level --
+    cp a, -4
+    jr nc, .checkEndY
+.loadNextLevel:
     ; Go to the next map
     ld a, b
     inc a
@@ -284,7 +297,7 @@ PlayerUpdate::
     ; Loading the map likely switched to the spawn state, restart the update
     ; routine
     jr PlayerUpdate
-.nextLevelEnd:
+.checkEndY:
 
     ; Update the jump buffer
     ldh a, [hInputNext]
@@ -622,5 +635,4 @@ hJumpBuffer: db
 hGrace: db
 hDashCount: db
 hDashTime: db
-hDMGPalette: db
 hEnd:

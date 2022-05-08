@@ -5,7 +5,7 @@ def MAP_X_B equ 16
 def MAP_Y_B equ 16
 
 ; Arbitrary limit of updates per frame, matches the size of `wObjects`
-def MAP_UPDATES equ 26
+def MAP_UPDATES equ 20
 
 ; Constants for some opcodes
 def OP_LD_A_D8  equ $3e
