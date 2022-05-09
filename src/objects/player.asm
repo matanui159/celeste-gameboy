@@ -575,7 +575,10 @@ PlayerUpdate::
 
     ; Get the physics engine to move the player using the speed
     call PhysicsMovePlayer
-    ; TODO: check if the player is dead
+    ; Check if the player is now dead, eg. from colliding with spikes
+    ldh a, [hPlayerType]
+    cp a, PLAYER_NORMAL
+    ret nz
 
     ; Prevent movement off the left and right edges
     ldh a, [rSCX]
@@ -629,11 +632,14 @@ wEnd:
 section union "Player HRAM", hram
 hPlayerType: db
 hStart:
+; The first two HRAM variables must not be updated by the physics engine since
+; if at some point during a physics update the player dies, we don't wanna
+; overwrite the two death HRAM variables during the rest of the physics update.
+hJumpBuffer: db
+hGrace: db
 hPlayerRemX:: db
 hPlayerRemY:: db
 hPlayerGroundFlags:: db
-hJumpBuffer: db
-hGrace: db
 hDashCount: db
 hDashTime: db
 hEnd:

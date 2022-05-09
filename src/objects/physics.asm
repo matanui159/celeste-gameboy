@@ -274,6 +274,9 @@ MovePlayerY:
 ;; physics in Celeste the player is the only one that uses it.
 PhysicsMovePlayer::
     ; -- [x] get move amount --
+    ; Inform collision callbacks that the player is moving left or right
+    xor a, a
+    ldh [hPhysicsDirection], a
     ; Read the speed X
     ld hl, wPlayerSpeedX
     ld a, [hl+]
@@ -290,9 +293,14 @@ PhysicsMovePlayer::
     ; If the movement amount is non-zero, move in the X direction
     ld a, h
     or a, a
-    call nz, MovePlayerX
+    jr z, .zeroX
+    call MovePlayerX
 
+.moveY:
     ; -- [y] get move amount --
+    ; Inform the player is moving up or down
+    ld a, 1
+    ldh [hPhysicsDirection], a
     ; Read the speed Y
     ld hl, wPlayerSpeedY
     ld a, [hl+]
@@ -319,3 +327,36 @@ PhysicsMovePlayer::
     call CollideTilesAtPlayer
     dec c
     jp UpdateGroundFlags
+
+.zeroX:
+    ; If the X movement is zero, do a check regardless based on the current X
+    ; speed. With the special case of speed=0 doing a check at the current
+    ; position.
+    ld hl, wObjectPlayer +  OAMA_X
+    ld a, [hl-]
+    ; The speed is still in BC, if the sign bit is 1, subtract 1 from the
+    ; X position.
+    srl b
+    sbc a, 0
+    ; Save the X position in D for now
+    ld d, a
+    ; If the speed is not zero, increment the X position
+    ld a, b
+    or a, a
+    jr nz, .posX
+    ; We know at this point that A is zero so we can just compare A to C
+    cp a, c
+    jr z, .collideX
+.posX:
+    inc d
+.collideX:
+    ; Check for collisions
+    ld b, d
+    ld c, [hl]
+    call CollideTilesAtPlayer
+    jr .moveY
+
+
+section "Physics HRAM", hram
+; 0, if moving the player left/right, 1 if moving the player up/down
+hPhysicsDirection:: db
