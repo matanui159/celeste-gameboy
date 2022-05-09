@@ -1,5 +1,10 @@
 include "hardware.inc"
 
+section "Reset $30", rom0[$0030]
+    ; A little utility which will JP to HL. Since RST calls are like normal
+    ; calls this allows for a 1-byte CALL HL
+    jp hl
+
 section "Reset $38", rom0[$0038]
     ; We pad the ROM with $ff which is rst $38 so any invalid jumps will end up
     ; here. We just restart the ROM by restoring A and going back to the entry.

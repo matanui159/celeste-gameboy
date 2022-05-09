@@ -10,10 +10,6 @@ section "Spikes ROM", rom0
 ;; @saved hl
 ;; @saved bc
 SpikeCollideUp::
-    ; Skip collision check if the player is moving left or right (dir=0)
-    ldh a, [hPhysicsDirection]
-    or a, a
-    ret z
     ; Check that the speed is positive as well, we only need the high byte
     ld a, [wPlayerSpeedY + 1]
     bit 7, a
@@ -37,10 +33,6 @@ SpikeCollideUp::
 
 ;; Performs collision in the down direction
 SpikeCollideDown::
-    ; Skip if moving left/right
-    ldh a, [hPhysicsDirection]
-    or a, a
-    ret z
     ; Skip if speed is non-zero positive
     push hl
     ld hl, wPlayerSpeedY + 1
@@ -73,10 +65,6 @@ SpikeCollideDown::
 
 ;; Performs collision in the right direction
 SpikeCollideRight::
-    ; Skip if moving up/down (dir=1)
-    ldh a, [hPhysicsDirection]
-    or a, a
-    ret nz
     ; Skip if speed is non-zero positive
     push hl
     ld hl, wPlayerSpeedX + 1
@@ -105,10 +93,6 @@ SpikeCollideRight::
 
 ;; Performs collision in the left direction
 SpikeCollideLeft::
-    ; Skip if moving up/down
-    ldh a, [hPhysicsDirection]
-    or a, a
-    ret nz
     ; Skip if speed is negative
     ld a, [wPlayerSpeedX + 1]
     bit 7, a

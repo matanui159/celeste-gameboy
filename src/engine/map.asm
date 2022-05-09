@@ -271,85 +271,46 @@ MapTilePosition::
 
 ;; Finds the nearest tile to the provided position
 ;; @param bc: X and Y position
-;; @returns %z: Set if a tile was found
-;; @returns  l: Tile position
+;; @returns a: Tile ID at the given position, or 0 if the position is off the map
 ;; @saved bc
 MapFindTileAt::
+    ; X position (low nybble)
     ; Get the X scroll position
     ldh a, [rSCX]
-    ld d, a
-    ; X position (low nybble)
     ; Undo scroll and OAM offsets
-    ld a, b
+    add a, b
     sub a, OAM_X_OFS
-    add a, d
     ; If the X is >=128 (highest bit set) the point is off the map
     bit 7, a
-    ret nz
+    jr nz, .overflow
     ; Shift right by 3
     add a, a
     swap a
     and a, $0f
     ld l, a
 
+    ; Y position (high nybble)
     ; Get the Y scroll position
     ldh a, [rSCY]
-    ld d, a
-    ; Y position (high nybble)
     ; Undo offsets
-    ld a, c
+    add a, c
     sub a, OAM_Y_OFS
-    add a, d
     ; Check if the point is off the map
     bit 7, a
-    ret nz
+    jr nz, .overflow
     ; Shift left by 1
     add a, a
     and a, $f0
     or a, l
     ld l, a
-    ; Make sure %z is set
-    xor a, a
-    ret
 
-
-;; Calls collision routines based on the tile ID. See `LoadTile` above as to why
-;; this is in a seperate call.
-;; @param a: Tile ID
-;; @param bc: Collide position
-;; @saved hl
-;; @saved bc
-CollideTile:
-    cp a, 17
-    jp z, SpikeCollideUp
-    cp a, 27
-    jp z, SpikeCollideDown
-    cp a, 43
-    jp z, SpikeCollideRight
-    cp a, 59
-    jp z, SpikeCollideLeft
-    ret
-
-
-;; Performs a collision with the tile closest to the provided position.
-;; Collision callbacks will be invoked and any flags will be returned.
-;; @param bc: X and Y position
-;; @returns a: Tile flags
-;; @saved bc
-MapCollideTileAt::
-    ; Find the tile and return if its off the map
-    call MapFindTileAt
-    ; We use LD instead or XOR so we don't overwrite the Z flag
-    ld a, 0
-    ret nz
-    ; Get the tile ID and handle collisions
+    ; Get the tile ID and return
     ld h, high(wMapTiles)
     ld a, [hl]
-    call CollideTile
-    ; Get the attributes from the lookup table
-    ld d, high(GenAttrs)
-    ld e, [hl]
-    ld a, [de]
+    ret
+.overflow:
+    ; Return zero if the point is off the map
+    xor a, a
     ret
 
 

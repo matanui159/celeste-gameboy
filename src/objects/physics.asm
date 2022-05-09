@@ -55,88 +55,92 @@ PhysicsAccelerate::
     ret
 
 
-;; Handles collision for all the tiles the player is colliding with, and ORs all
-;; the flags of all those tiles
+;; Finds all the tiles the player is colliding with, and calls the specified
+;; callback for each one.
 ;; @param bc: Player position
-;; @returns a: Tile flags
+;; @param hl: Tile callback
 ;; @saved bc
-CollideTilesAtPlayer:
+FindTilesAtPlayer:
     ; First we check the top-left corner, near the X/Y position
     ; The player has a hitbox offset of 1, 3
     inc b
     inc c
     inc c
     inc c
-    call MapCollideTileAt
-    ; Save the attributes for now
-    push af
+    push hl
+    call MapFindTileAt
+    pop hl
+    ; Call the callback
+    rst $30
 
     ; Check the top-right corner, the hitbox width is 6
     ; We add one pixel less so we get the last pixel not the next pixel
     ld a, b
     add a, 5
     ld b, a
-    call MapCollideTileAt
-    ; OR it with the previous attributes currently in the stack
-    pop de
-    or a, d
-    push af
+    push hl
+    call MapFindTileAt
+    pop hl
+    ; Call the callback
+    rst $30
 
     ; Check the bottom-right tile, the hitbox height is 5
     ld a, c
     add a, 4
     ld c, a
-    call MapCollideTileAt
-    ; OR with previous attributes
-    pop de
-    or a, d
-    push af
+    push hl
+    call MapFindTileAt
+    pop hl
+    ; Call the callback
+    rst $30
 
     ; Check the bottom-left tile
     ld a, b
     sub a, 5
     ld b, a
-    call MapCollideTileAt
-    ; OR with previous attributes
-    pop de
-    or a, d
-    ; Save into D for now
-    ld d, a
+    push hl
+    call MapFindTileAt
+    pop hl
+    ; Call the callback
+    rst $30
 
     ; Restore the original position
     dec b
     ld a, c
     sub a, 7
     ld c, a
-    ld a, d
     ret
 
 
-;; Updates the ground flags and spawns a smoke particle if needed
-;; @param bc: Player position
-;; @param  a: Ground flags
+;; Gets the flags of a specific tile and ORs it with any existing flags
+;; @param a: Tile ID
+;; @param d: Existing flags
+;; @returns d: Updated Flags
+OrTileFlags:
+    ld h, high(GenAttrs)
+    ld l, a
+    ld a, [hl]
+    or a, d
+    ld d, a
+    ; Restore HL since we know if we're here, HL is pointing to this callback
+    ld hl, OrTileFlags
+    ret
+
+
+;; Calls collision routines based on the tile ID.
+;; @param a: Tile ID
+;; @param bc: Collide position
+;; @saved hl
 ;; @saved bc
-;; @saved  a
-UpdateGroundFlags::
-    ld hl, hPlayerGroundFlags
-    ld d, [hl]
-    ld [hl], a
-    ; Check if we were not on the ground the previous frame
-    bit ATTRB_SOLID, d
-    ret nz    
-    ; Check if we are currently on the ground
-    bit ATTRB_SOLID, a
-    ret z
-    ; The player has just landed, spawn a smoke particle
-    push af
-    push bc
-    ; The smoke particle has an offset of 0,+4
-    ld a, c
-    add a, 4
-    ld c, a
-    call SmokeSpawn
-    pop bc
-    pop af
+CollideTile:
+    cp a, 17
+    jp z, SpikeCollideUp
+    cp a, 27
+    jp z, SpikeCollideDown
+    cp a, 43
+    jp z, SpikeCollideRight
+    cp a, 59
+    jp z, SpikeCollideLeft
     ret
 
 
@@ -156,15 +160,18 @@ MovePlayerX:
     ld c, a
     ; Check in which direction we are moving
     bit 7, h
+    ; Setup the tile callback ready
+    ld hl, OrTileFlags
+    ld d, 0
     jr nz, .moveLeft
 
     ; Moving right (positive)
     ; There seems to be a bug in the original source code that makes it do one
     ; more step than it needs to. We replicate that bug here
     inc b
-    call CollideTilesAtPlayer
+    call FindTilesAtPlayer
     ; Check the solid attribute
-    bit ATTRB_SOLID, a
+    bit ATTRB_SOLID, d
     jr z, .return
     ; If it is solid, align the right edge of the player hitbox with the left
     ; edge of the tile.
@@ -179,9 +186,9 @@ MovePlayerX:
     ; Moving left (negative)
     ; Replicate bug
     dec b
-    call CollideTilesAtPlayer
+    call FindTilesAtPlayer
     ; Check the solid attribute
-    bit ATTRB_SOLID, a
+    bit ATTRB_SOLID, d
     jr z, .return
     ; Align left side
     ld a, b
@@ -208,6 +215,7 @@ MovePlayerX:
 
 
 ;; @param h: Y movement amount
+;; @effect bc: New position
 MovePlayerY:
     ; Get the position
     ld a, [wObjectPlayer + OAMA_X]
@@ -218,24 +226,54 @@ MovePlayerY:
 
     ; Check which direction we're moving
     bit 7, h
+    ; Save H into E for now since we might need it later
+    ld e, h
+    ; Setup the tile callback
+    ld hl, OrTileFlags
+    ld d, 0
     jr nz, .moveUp
 
     ; Moving down (positive)
-    ; Replicate bug
+    ; Replicate bug, this is also used to check 1 pixel down if this is called
+    ; with a movement amount of 0
     inc c
-    call CollideTilesAtPlayer
-    ; Update the ground flags
-    call UpdateGroundFlags
+    call FindTilesAtPlayer
+    ; Update the ground flags, saving the old flags in H
+    ldh a, [hPlayerGroundFlags]
+    ld h, a
+    ld a, d
+    ldh [hPlayerGroundFlags], a
     ; Check if solid
-    bit ATTRB_SOLID, a
-    jr z, .return
+    bit ATTRB_SOLID, d
+    jr z, .noSolid
     ; Align bottom side
     ld a, c
     add a, 8
     and a, $f8
     sub a, 8
     ld c, a
+    ; Check if the player has just landed
+    bit ATTRB_SOLID, h
+    jr nz, .solid
+    ; If so, spawn a smoke particle with an offset of 0,+4
+    push bc
+    add a, 4
+    ld c, a
+    call SmokeSpawn
+    pop bc
     jr .solid
+
+.noSolid:
+    ; If no solid surface was found when moving down, check if we should be
+    ; moving down (if the original movement amount in E is non-zero) and if not
+    ; undo the offset applied and return now.
+    dec c
+    ld a, e
+    or a, a
+    ret z
+    ; Turns out the player was moving, reapply the increment and return normally
+    inc c
+    jr .return
 
 .moveUp:
     ; Moving up (negative)
@@ -244,9 +282,9 @@ MovePlayerY:
     ldh [hPlayerGroundFlags], a
     ; Replicate bug
     dec c
-    call CollideTilesAtPlayer
+    call FindTilesAtPlayer
     ; Check if solid
-    bit ATTRB_SOLID, a
+    bit ATTRB_SOLID, d
     jr z, .return
     ; Align top side
     ld a, c
@@ -274,9 +312,6 @@ MovePlayerY:
 ;; physics in Celeste the player is the only one that uses it.
 PhysicsMovePlayer::
     ; -- [x] get move amount --
-    ; Inform collision callbacks that the player is moving left or right
-    xor a, a
-    ldh [hPhysicsDirection], a
     ; Read the speed X
     ld hl, wPlayerSpeedX
     ld a, [hl+]
@@ -293,14 +328,9 @@ PhysicsMovePlayer::
     ; If the movement amount is non-zero, move in the X direction
     ld a, h
     or a, a
-    jr z, .zeroX
-    call MovePlayerX
+    call nz, MovePlayerX
 
-.moveY:
     ; -- [y] get move amount --
-    ; Inform the player is moving up or down
-    ld a, 1
-    ldh [hPhysicsDirection], a
     ; Read the speed Y
     ld hl, wPlayerSpeedY
     ld a, [hl+]
@@ -313,50 +343,10 @@ PhysicsMovePlayer::
     add hl, bc
     ld a, l
     ldh [hPlayerRemY], a
-    ; If the movement is non-zero, move in the Y direction
-    ld a, h
-    or a, a
-    ; This call will return after it is finished
-    jp nz, MovePlayerY
-    ; If the speed is zero, we still do a check to update the ground flags
-    ld hl, wObjectPlayer
-    ld a, [hl+]
-    ld c, a
-    ld b, [hl]
-    inc c
-    call CollideTilesAtPlayer
-    dec c
-    jp UpdateGroundFlags
+    ; Always move in the Y direction since the function also handles zero
+    ; movement
+    call MovePlayerY
 
-.zeroX:
-    ; If the X movement is zero, do a check regardless based on the current X
-    ; speed. With the special case of speed=0 doing a check at the current
-    ; position.
-    ld hl, wObjectPlayer +  OAMA_X
-    ld a, [hl-]
-    ; The speed is still in BC, if the sign bit is 1, subtract 1 from the
-    ; X position.
-    srl b
-    sbc a, 0
-    ; Save the X position in D for now
-    ld d, a
-    ; If the speed is not zero, increment the X position
-    ld a, b
-    or a, a
-    jr nz, .posX
-    ; We know at this point that A is zero so we can just compare A to C
-    cp a, c
-    jr z, .collideX
-.posX:
-    inc d
-.collideX:
-    ; Check for collisions
-    ld b, d
-    ld c, [hl]
-    call CollideTilesAtPlayer
-    jr .moveY
-
-
-section "Physics HRAM", hram
-; 0, if moving the player left/right, 1 if moving the player up/down
-hPhysicsDirection:: db
+    ; Check for collisions, BC is the new position due to effect from MovePlayerY
+    ld hl, CollideTile
+    jp FindTilesAtPlayer
