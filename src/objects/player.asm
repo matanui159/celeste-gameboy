@@ -575,6 +575,7 @@ PlayerUpdate::
 
     ; Get the physics engine to move the player using the speed
     call PhysicsMovePlayer
+    ; TODO: check if the player is dead
 
     ; Prevent movement off the left and right edges
     ldh a, [rSCX]

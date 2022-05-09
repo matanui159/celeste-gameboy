@@ -69,6 +69,20 @@ CopyMapDMA:
     ret
 
 
+;; Loads a singular tile based on the tile ID. We do this in it's own function
+;; so we can do conditional JP's to other routines which will exit the switch
+;; when returning. Note that anything marked as 'saved' here must, by extension,
+;; also be saved by all the `*Load` routines.
+;;
+;; @param  a: Tile ID
+;; @param hl: Tile address
+;; @saved hl
+LoadTile:
+    cp a, 1
+    jp z, PlayerSpawnLoad
+    ret
+
+
 ;; @param a: Map ID
 MapLoad::
     ldh [hMapIndex], a
@@ -87,10 +101,6 @@ MapLoad::
     ld de, MAP_X_B * MAP_Y_B
     call MemoryCopy
 
-    ; Setup the return address for `load` functions
-    ld bc, .loadReturn
-    push bc
-
     ; Load all the different tiles if needed
     ; We do this in a seperate step from the initial copy so that tiles can
     ; modify other tiles during load
@@ -98,17 +108,11 @@ MapLoad::
     ; the map being one page in size, we can stop looping when L becomes 0.
     dec h
 .loadLoop:
-
-    ; Handle the tile. All the `load` functions must not override `hl`
+    ; Handle the tile
     ld a, [hl]
-    cp a, 1
-    jp z, PlayerSpawnLoad
-
-.loadContinue:
+    call LoadTile
     inc l
     jr nz, .loadLoop
-    ; Remove the return address from the stack
-    pop bc
 
     ; Clear the update queue since we're going to be updating the whole screen
     call ClearQueue
@@ -188,13 +192,6 @@ MapLoad::
     ld a, LCDCF_BGON | LCDCF_BG8000 | LCDCF_ON
     ldh [rLCDC], a
     ret
-
-.loadReturn:
-    ; The return address for the `load` functions. We move it here so we don't
-    ; have to jump over it to escape the loop above.
-    ; Reuse the return address for later `load` functions
-    add sp, -2
-    jr .loadContinue
 
 
 ;; Initializes the map rendering and update routines
@@ -316,6 +313,16 @@ MapFindTileAt::
     ret
 
 
+;; Calls collision routines based on the tile ID. See `LoadTile` above as to why
+;; this is in a seperate call.
+;; @param a: Tile ID
+;; @param bc: Collide position
+;; @saved  a
+;; @saved bc
+CollideTile:
+    ret
+
+
 ;; Performs a collision with the tile closest to the provided position.
 ;; Collision callbacks will be invoked and any flags will be returned.
 ;; @param bc: X and Y position
@@ -327,17 +334,10 @@ MapCollideTileAt::
     ; We use LD instead or XOR so we don't overwrite the Z flag
     ld a, 0
     ret nz
-    ; Get the tile ID
+    ; Get the tile ID and handle collisions
     ld h, high(wMapTiles)
     ld a, [hl]
-    ; Setup the return address for collisions
-    ld de, .return
-    push de
-
-    ; TODO: Handle collision callbacks
-
-    pop de
-.return:
+    call CollideTile
     ; Get the attributes from the lookup table
     ld d, high(GenAttrs)
     ld e, a
