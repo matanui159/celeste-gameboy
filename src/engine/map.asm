@@ -317,9 +317,17 @@ MapFindTileAt::
 ;; this is in a seperate call.
 ;; @param a: Tile ID
 ;; @param bc: Collide position
-;; @saved  a
+;; @saved hl
 ;; @saved bc
 CollideTile:
+    cp a, 17
+    jp z, SpikeCollideUp
+    cp a, 27
+    jp z, SpikeCollideDown
+    cp a, 43
+    jp z, SpikeCollideRight
+    cp a, 59
+    jp z, SpikeCollideLeft
     ret
 
 
@@ -340,7 +348,7 @@ MapCollideTileAt::
     call CollideTile
     ; Get the attributes from the lookup table
     ld d, high(GenAttrs)
-    ld e, a
+    ld e, [hl]
     ld a, [de]
     ret
 
