@@ -1,11 +1,14 @@
 CFLAGS = -Wall -Wextra -Wpedantic
 ASM_FLAGS = -Weverything
-LINK_FLAGS = -w -p 0xff
+LINK_FLAGS = -wp 0xff
 FIX_FLAGS = -f hg
 DMG_FLAGS = --force-dmg -P 72 # "Black Zero"
 CGB_FLAGS = -C 1 # SameBoy
 DEBUG_FLAGS = -p
 
+# TODO: currently gen_sfx is not in this list due to not fitting in the ROM.
+#       We definitely have space to save by compressing down the 1bpp font and
+#       square tiles
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
 	bin/gen/gen_tiles.obj \
