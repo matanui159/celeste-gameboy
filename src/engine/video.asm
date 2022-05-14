@@ -53,8 +53,25 @@ VideoInit::
     ; Copy over the tile data
     ld hl, _VRAM
     ld bc, GenTiles
-    ld de, TilesEnd - GenTiles
+    ld de, GenTiles.end - GenTiles
     call MemoryCopy
+
+    ; Copy over the bitmap data
+    ; HL is already at the correct address
+    ld bc, Bitmaps
+    ; We count the number of tiles with each tile being 8 bytes
+    ld d, (BitmapsEnd - Bitmaps) / 8
+.bitmapLoop:
+    ; Copy one tile, we convert 1bpp to 2bpp by duplicating the single byte per
+    ; row
+rept 8
+    ld a, [bc]
+    inc bc
+    ld [hl+], a
+    ld [hl+], a
+endr
+    dec d
+    jr nz, .bitmapLoop
 
     ; Check if we are on CGB or DMG
     ldh a, [hMainBoot]

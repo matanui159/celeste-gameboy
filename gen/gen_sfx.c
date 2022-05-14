@@ -451,7 +451,7 @@ int main(void) {
         }
     }
 
-    printf("\nsection \"Generated sound table\", romx, bank[1]\n");
+    printf("\nsection \"Generated sound table\", romx, bank[1], align[8]\n");
     printf("GenSoundTable::");
     for (size_t i = 0; i < 64; i += 1) {
         if (i % 8 == 0) {

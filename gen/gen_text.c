@@ -23,7 +23,7 @@ static void text_print_halfrow(uint8_t *font, uint8_t c, size_t y) {
     uint8_t *data = &font[((tile_y * 8 + y - 2) * 16 + tile_x) * 8];
     for (size_t x = 0; x < 4; x += 1) {
         // TODO: compress this data down to 1-bit per pixel
-        printf(data[x] < 128 ? "0" : "3");
+        printf(data[x] < 128 ? "0" : "1");
     }
 }
 
@@ -60,7 +60,7 @@ int main(void) {
     int width, height;
     uint8_t *font = stbi_load("gen/pico8_font.png", &width, &height, NULL, 1);
     assert(font != NULL);
-    printf("\nsection fragment \"Tiles\", romx, bank[1]\n");
+    printf("\nsection fragment \"Bitmaps\", romx, bank[1]\n");
     printf("GenText::");
     for (size_t i = 0; i < 256; i += 1) {
         char *pr = pairs[i];
@@ -69,7 +69,7 @@ int main(void) {
         }
         printf("\n");
         for (size_t y = 0; y < 8; y += 1) {
-            printf("    dw `");
+            printf("    db %%");
             text_print_halfrow(font, pr[0], y);
             text_print_halfrow(font, pr[1], y);
             printf("\n");

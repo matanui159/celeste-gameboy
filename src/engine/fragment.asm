@@ -1,5 +1,5 @@
-section fragment "Tiles", romx, bank[1]
-TilesEnd::
+section fragment "Bitmaps", romx, bank[1]
+BitmapsEnd::
 
 
 section fragment "VBlank", rom0

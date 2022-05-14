@@ -6,17 +6,15 @@ DMG_FLAGS = --force-dmg -P 72 # "Black Zero"
 CGB_FLAGS = -C 1 # SameBoy
 DEBUG_FLAGS = -p
 
-# TODO: currently gen_sfx is not in this list due to not fitting in the ROM.
-#       We definitely have space to save by compressing down the 1bpp font and
-#       square tiles
 CELESTE = bin/celeste.gb
 CELESTE_OBJ = \
 	bin/gen/gen_tiles.obj \
-	bin/src/tiles.obj \
+	bin/src/bitmaps.obj \
 	bin/gen/gen_text.obj \
 	bin/gen/gen_palettes.obj \
 	bin/gen/gen_attrs.obj \
 	bin/gen/gen_maps.obj \
+	bin/gen/gen_sfx.obj \
 	bin/src/main.obj \
 	bin/src/memory.obj \
 	bin/src/random.obj \
