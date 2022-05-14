@@ -15,6 +15,7 @@ CELESTE_OBJ = \
 	bin/gen/gen_attrs.obj \
 	bin/gen/gen_maps.obj \
 	bin/gen/gen_sfx.obj \
+	bin/gen/gen_music.obj \
 	bin/src/main.obj \
 	bin/src/memory.obj \
 	bin/src/random.obj \

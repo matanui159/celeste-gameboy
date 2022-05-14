@@ -417,7 +417,7 @@ int main(void) {
         } else {
             flags = 0x80;
         }
-        printf("    db $%02x, $%02x, $%02x\n", sound->channels, speed, length | flags);
+        printf("    db $%02x, %u, %u\n", sound->channels, speed, length | flags);
         for (uint8_t j = 0; j < length; j += 1) {
             sfx_note_t note = sfx_get_note(data, sound);
             uint8_t channel;
