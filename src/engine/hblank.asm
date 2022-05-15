@@ -1,10 +1,17 @@
 include "../hardware.inc"
 
 
-section "STAT Interrupt", rom0[$0048]
-Stat:
+section "STAT interrupt", rom0[$0048]
+    ; Save some variables onto the stack, and jump somewhere else
+    ; We set the specific address for that "somewhere else" so that we can use
+    ; A relative jump.
     push af
     push hl
+    jr Stat
+
+
+section "STAT ROM", rom0[$0066]
+Stat:
     ; Toggle the objects, save into H for now
     ldh a, [rLCDC]
     xor a, LCDCF_OBJON

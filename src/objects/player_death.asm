@@ -63,7 +63,11 @@ PlayerDeathKill::
     ; Setup the death timer
     ld a, 15
     ldh [hTimer], a
-    ret
+
+    ; Play the death sound, high priority
+    ld b, 0
+    ld c, 1
+    jp AudioPlaySound
 
 
 ;; Updates a singular death particle

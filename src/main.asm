@@ -75,8 +75,9 @@ Main:
     call SmokeInit
     call HBlankInit
     call InputInit
+    call AudioInit
 
-    ld a, IEF_VBLANK | IEF_STAT
+    ld a, IEF_VBLANK | IEF_STAT | IEF_TIMER
     ldh [rIE], a
     xor a, a
     ldh [rIF], a

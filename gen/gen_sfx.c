@@ -1,14 +1,14 @@
 #include "gen.h"
 #include <math.h>
 
-#define SFX_PULSE0_50 0x2
-#define SFX_PULSE0_75 0x3
-#define SFX_PULSE1_50 (SFX_PULSE0_50 | 0x4)
-#define SFX_PULSE1_75 (SFX_PULSE0_75 | 0x4)
-#define SFX_WAVE_TRI  0x8
-#define SFX_WAVE_SAW  0x9
+#define SFX_PULSE0_50 0x8
+#define SFX_PULSE0_75 0xc
+#define SFX_PULSE1_50 (SFX_PULSE0_50 | 0x1)
+#define SFX_PULSE1_75 (SFX_PULSE0_75 | 0x1)
+#define SFX_WAVE_TRI  0x2
+#define SFX_WAVE_SAW  0x6
 #define SFX_WAVE_ORG  0xa
-#define SFX_NOISE     0xc
+#define SFX_NOISE     0x3
 
 #define SFX_CHAN2(a, b) (((a) << 4) | ((b) << 0))
 #define SFX_CHAN1(a)    SFX_CHAN2(a, a)
@@ -432,7 +432,7 @@ int main(void) {
                 channel = 0x10;
                 break;
             }
-            switch (channel >> 2) {
+            switch (channel & 0x3) {
             case 0:
             case 1:
                 sfx_gen_pulse(&note);
