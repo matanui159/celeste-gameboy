@@ -197,7 +197,10 @@ rept 2
     ld a, b
     ld [hl+], a
 endr
-    ret
+    ; Play the dash sound
+    ld b, 3
+    ld c, 0
+    jp AudioPlaySound
 
 
 ;; Accelerates a single axis using the speed, target and acceleration in memory
@@ -483,6 +486,10 @@ PlayerUpdate::
     ld c, a
     ld b, [hl]
     call SmokeSpawn
+    ; Play a jump sound
+    ld b, 1
+    ld c, 0
+    call AudioPlaySound
     ; Set the vertical speed to -2
     ld hl, -(2.0 >> 8)
 .jumpEnd:

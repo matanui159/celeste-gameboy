@@ -432,7 +432,7 @@ int main(void) {
                 channel = 0x10;
                 break;
             }
-            switch (channel & 0x3) {
+            switch (channel & 0x13) {
             case 0:
             case 1:
                 sfx_gen_pulse(&note);

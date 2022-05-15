@@ -9,7 +9,7 @@ section "STAT interrupt", rom0[$0048]
     push hl
     jr Stat
 
-section "STAT ROM", rom0[$0066]
+section "STAT ROM", rom0[$0058]
 Stat:
     ; Toggle the LY register. If this interrupt is for 7, we switch to 128+7,
     ; otherwise switch back to 7.

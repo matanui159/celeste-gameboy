@@ -9,26 +9,9 @@ def CHANA_POINTER  rw
 def CHANA_NOTE     rb
 def sizeof_CHANNEL rb 0
 
-rsreset
-def PULSEA_EFFECT rb
-def sizeof_PULSE  rb 0
-
-
 section "Timer interrupt", rom0[$0050]
-    ; This is called 128 times a second to update the audio
     ei
-    push af
-    push bc
-    push de
-    push hl
-    call UpdatePulse0
-    call UpdatePulse1
-    pop hl
-    pop de
-    pop bc
-    pop af
-    ret
-
+    jp Timer
 
 section "Audio ROM", rom0
 
@@ -36,8 +19,8 @@ section "Audio ROM", rom0
 ;; Initialises the audio system
 AudioInit::
     ; Clear out the audio memory
-    ld hl, wPulse0Common
-    ld de, wEnd - wPulse0Common
+    ld hl, wChannelPulse0
+    ld de, wChannelsEnd - wChannelPulse0
     call MemoryClear
     ldh [hSoundChannels], a
 
@@ -68,38 +51,36 @@ AudioInit::
 
 
 ;; Play code shared by all channels
-;; @param  d: Channel flags
-;; @param bc: Pointer to sound data
+;; @param  b: Channel flags
+;; @param de: Pointer to sound data
 ;; @param hl: Pointer to the channel data
-;; @returns hl: Pointer to after the channel data (extra data)
 PlayCommon:
     ; Flags
-    ld a, d
+    ld a, b
     ld [hl+], a
     ; Speed
-    ld a, [bc]
-    inc bc
+    ld a, [de]
+    inc de
     ld [hl+], a
     ; Falls through to `RestartChannel` below
 
 
 ;; Restarts a channel if it is looping
-;; @param bc: Pointer to sound data, starting at the length byte
+;; @param de: Pointer to sound data, starting at the length byte
 ;; @param hl: Pointer to the channel data, starting at the start address byte
-;; @returns hl: Pointer to after the channel data (extra data)
 RestartChannel:
     ; Check if looping is enabled
-    ld a, [bc]
-    ld d, a
-    bit 7, d
+    ld a, [de]
+    ld b, a
+    bit 7, b
     jr z, .noLoop
     ; Looping enabled, save the starting address so we can come back
-    ld a, c
+    ld a, e
     ld [hl+], a
-    ld a, b
+    ld a, d
     ld [hl+], a
     ; Remove the looping flag
-    ld a, d
+    ld a, b
     and a, $7f
 .noLoop:
     ; Looping disabled, set the start address to $0000 to indicate there is no
@@ -107,84 +88,109 @@ RestartChannel:
     xor a, a
     ld [hl+], a
     ld [hl+], a
-    ld a, d
+    ld a, b
 .start:
     ; Increment the length by 1 since we insert one dummy note
     inc a
     ld [hl+], a
     ; Current pointer
-    inc bc
-    ld a, c
+    inc de
+    ld a, e
     ld [hl+], a
-    ld a, b
+    ld a, d
     ld [hl+], a
     ; Current note length. Set to 1 so next audio frame this gets decremented to
     ; 0, causing the first note to be played
-    ld a, 1
-    ld [hl+], a
+    ld [hl], 1
     ret
 
 
 ;; @param  d: Channel flags
-;; @param bc: Pointer to sound data
+;; @param de: Pointer to sound data
 PlayPulse0:
-    ld hl, wPulse0Common
-    ld e, low(rAUD1LEN)
+    ld hl, wChannelPulse0
+    ld c, low(rAUD2ENV)
     jr PlayPulse
 
 
 ;; @param  d: Channel flags
-;; @param bc: Pointer to sound data
+;; @param de: Pointer to sound data
 PlayPulse1:
-    ld hl, wPulse1Common
-    ld e, low(rAUD2LEN)
+    ld hl, wChannelPulse1
+    ld c, low(rAUD2ENV)
     ; Falls through to `PlayPulse`
 
 
 ;; Common code shared by both pulse channels
-;; @param  d: Channel flags
-;; @param  e: NRx1 register
-;; @param bc: Pointer to sound data
+;; @param  b: Channel flags
+;; @param  c: NRx2 register
+;; @param de: Pointer to the channel data
 ;; @param hl: Pointer to the pulse channel data
 PlayPulse:
     ; Check if we need to change the wave duty
     ld a, [hl]
-    xor a, d
-    and a, $c
+    xor a, b
+    and a, $f
     jr z, .dutyEnd
-    ; Swap E and C so we can access registers
-    ld a, c
-    ld c, e
-    ld e, a
+    ; Mute the pulse channel
+    xor a, a
+    ldh [c], a
+    dec c
     ; Update the pulse duty
-    ld a, d
+    ld a, b
     and a, $c
     swap a
     ldh [c], a
-    ld c, e
 .dutyEnd:
     ; Update common channel data
     jp PlayCommon
 
 
-
-;; @param  d: Channel flags
-;; @param bc: Pointer to sound data
+;; @param  b: Channel flags
+;; @param de: Pointer to sound data
 PlayWave:
-    ret
+    ; Check if we need to change the wave data
+    ld a, [wChannelWave]
+    xor a, b
+    and a, $f
+    jr z, .waveEnd
+    ; Get the address to the wave data we want to use
+    ; TODO: support other instruments
+    ld hl, WaveTri
+    ld c, low(_AUD3WAVERAM)
+
+    ; Disable and mute the wave channel
+    xor a, a
+    ldh [rAUD3ENA], a
+    ldh [rAUD3LEVEL], a
+    ; Quickly update the wave RAM
+rept 16
+    ld a, [hl+]
+    ldh [c], a
+    inc c
+endr
+    ; Re-enable the channel
+    ld a, AUD3ENA_ON
+    ldh [rAUD3ENA], a
+
+.waveEnd:
+    ; Update common data
+    ld hl, wChannelWave
+    jp PlayCommon
 
 
-;; @param  d: Channel flags
-;; @param bc: Pointer to sound data
+;; @param  b: Channel flags
+;; @param de: Pointer to sound data
 PlayNoise:
-    ret
+    ld hl, wChannelNoise
+    jp PlayCommon
 
 
 ;; Starts playing a sound on a specific channel
 ;; @param  a: Channel flags
 ;; @param bc: Pointer to sound data
 PlayChannel:
-    ld d, a
+    ld b, a
     and a, $3
     or a, a
     jp z, PlayPulse0
@@ -209,24 +215,24 @@ AudioPlaySound::
     ld l, b
     sla l
     ld a, [hl+]
-    ld c, a
-    ld b, [hl]
+    ld e, a
+    ld d, [hl]
 
     ; Setup the first channel
-    push bc
-    ld a, [bc]
-    inc bc
+    push de
+    ld a, [de]
+    inc de
     swap a
     and a, $0f
     call PlayChannel
-    pop bc
+    pop de
 
     ; Check if the second channel differs from the first
-    ld a, [bc]
-    inc bc
-    ld d, a
-    swap a
-    cp a, d
+    ld a, [de]
+    inc de
+    ld b, a
+    swap b
+    cp a, b
     jr z, .return
     ; If it doesn't, setup the second channel
     and a, $0f
@@ -241,14 +247,14 @@ AudioPlaySound::
     ret
 
 
-;; Update code shared by all channels. If there is nothing to do will pop the 
-;; stack twice causing the calling routine to also exit. Otherwise, will return
-;; the next note to play.
+;; Update code shared by all channels. Will check if there is a new note to play
+;; and if so will call the provided callback with the new note in DE.
 ;;
 ;; @param hl: Pointer to the channel data
-;; @returns hl: Pointer to after the channel data (extra data)
-;; @returns de: Next note to play
-UpdateCommon:
+;; @param bc: Note callback
+UpdateChannel:
+    ; Save BC for later, this also allows us to use RET to jump to the callback
+    push bc
     ; Get the speed since we might need it later
     inc hl
     ld a, [hl+]
@@ -258,18 +264,16 @@ UpdateCommon:
     inc hl
     ld a, [hl+]
     or a, a
-    jr z, .returnCaller
+    jr z, .return
     ; Get the current pointer since we might need it later
     ld a, [hl+]
     ld c, a
     ld a, [hl+]
     ld b, a
-    ; Decrement the note counter, exit if we are still waiting
+    ; Decrement the note counter, return if we are still waiting
     dec [hl]
-    jr nz, .returnCaller
+    jr nz, .return
     ; Current note finished, start the next one
-    ; Push HL for now so we can jump back here later
-    push hl
     ; Restart the note using the speed
     ld a, d
     ld [hl-], a
@@ -297,42 +301,34 @@ UpdateCommon:
     ld a, d
     xor a, [hl]
     bit 4, a
-    jr z, .return
+    ret z
 .silence:
     ; This channel should play silence instead
     ld de, $0000
-.return:
-    ; Set HL to the end of the channel data
-    pop hl
-    inc hl
+    ; This will jump to the BC callback we pushed earlier
     ret
-.returnCaller:
-    ; MWA HA HA I *WILL* DO EVIL STACK MANIPULATION AND NO ONE CAN STOP ME C:<
+.return:
+    ; Pop BC so we don't call the callback
     pop bc
     ret
 
 
-;; Updates the first pulse channel
+;; @param de: The note to play
 UpdatePulse0:
-    ld hl, wPulse0Common
-    call UpdateCommon
     ld c, low(rAUD1ENV)
-    jr UpdatePulseNote
+    jr UpdatePulse
 
 
-;; Updates the second pulse channel
+;; @param de: The note to play
 UpdatePulse1:
-    ld hl, wPulse1Common
-    call UpdateCommon
     ld c, low(rAUD2ENV)
-    ; Falls through to `UpdatePulseNote`
+    ; Falls through to `UpdatePulse`
 
 
 ;; Common code shared by both pulse channels for playing the next note
-;; @param hl: Pointer to the pulse data
-;; @param de: The note to play
 ;; @param  c: NRx2 register
-UpdatePulseNote:
+;; @param de: The note to play
+UpdatePulse:
     ; Extract the volume into B
     ld a, d
     and a, $e0
@@ -365,12 +361,103 @@ UpdatePulseNote:
     reti
 
 
+;; @param de: The note to play
+UpdateWave:
+    ; Extract the level into B
+    ld a, d
+    and a, $60
+    ld b, a
+    ; Extract the frequency into DE
+    sla e
+    ld a, d
+    rla
+    and a, $07
+    ; Set the enable flag
+    or a, AUDHIGH_RESTART
+    ld d, a
+
+    ; Update the registers
+    ld a, b
+    di
+    ldh [rAUD3LEVEL], a
+    ld a, e
+    ldh [rAUD3LOW], a
+    ld a, d
+    ldh [rAUD3HIGH], a
+    reti
+
+
+;; @param de: The note to play
+UpdateNoise:
+    ; Extract the volume into A
+    ld a, d
+    and a, $e0
+    ld b, a
+    ; Expand to 4-bits
+    and a, $80
+    swap a
+    add a, a
+    or a, b
+    ; Setup D to be the enable flag
+    ld d, AUDHIGH_RESTART
+
+    ; Update the registers
+    di
+    ldh [rAUD4ENV], a
+    ld a, e
+    ldh [rAUD4POLY], a
+    ld a, d
+    ldh [rAUD4GO], a
+    reti
+
+
+;; Timer interrupt. This is called 128 times a second to update the audio.
+Timer:
+    push af
+    push bc
+    push de
+    push hl
+
+    ; First pulse channel
+    ld hl, wChannelPulse0
+    ld bc, UpdatePulse0
+    call UpdateChannel
+
+    ; Second pulse channel
+    ld hl, wChannelPulse1
+    ld bc, UpdatePulse1
+    call UpdateChannel
+
+    ; Wave channel
+    ld hl, wChannelWave
+    ld bc, UpdateWave
+    call UpdateChannel
+
+    ; Noise channel
+    ld hl, wChannelNoise
+    ld bc, UpdateNoise
+    call UpdateChannel
+
+    pop hl
+    pop de
+    pop bc
+    pop af
+    ret
+
+
+section "Audio ROMX", romx
+; Just some wave tables for the wave channel
+
+WaveTri:
+    db $01, $23, $45, $67, $89, $ab, $cd, $ef
+    db $fe, $dc, $ba, $98, $76, $54, $32, $10
+
 section "Audio WRAM", wram0
-wPulse0Common: ds sizeof_CHANNEL
-wPulse0: ds sizeof_PULSE
-wPulse1Common: ds sizeof_CHANNEL
-wPulse1: ds sizeof_PULSE
-wEnd:
+wChannelPulse0: ds sizeof_CHANNEL
+wChannelPulse1: ds sizeof_CHANNEL
+wChannelWave: ds sizeof_CHANNEL
+wChannelNoise: ds sizeof_CHANNEL
+wChannelsEnd:
 
 section "Audio HRAM", hram
 hSoundChannels: db
