@@ -4,6 +4,7 @@ BitmapsEnd::
 
 section fragment "VBlank", rom0
     pop hl
+    pop bc
     ldh a, [hVideoFrames]
 VBlankReturn::
     inc a

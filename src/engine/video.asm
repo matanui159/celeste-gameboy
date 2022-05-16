@@ -139,7 +139,10 @@ VBlank:
     ldh a, [hVideoFrames]
     or a, a
     jr nz, VBlankReturn
-    ; We are in `VideoDraw` so we know which exact registers we need to save
+    ; While we are likely in `VideoDraw` so we could just save the registers it
+    ; uses, the audio interrupt could also be running right now, so we save
+    ; everything that is used by this interrupt.
+    push bc
     push hl
     ; Other pieces of fragment code will continue here, ending with
     ; `fragment.asm`
