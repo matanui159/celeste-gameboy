@@ -1,13 +1,13 @@
 include "../hardware.inc"
 
 rsreset
-def CHANA_FLAGS    rb
-def CHANA_SPEED    rb
-def CHANA_START    rw
-def CHANA_LENGTH   rb
-def CHANA_POINTER  rw
-def CHANA_NOTE     rb
-def sizeof_CHANNEL rb 0
+def CHANA_FLAGS   rb
+def CHANA_SPEED   rb
+def CHANA_START   rw
+def CHANA_LENGTH  rb
+def CHANA_POINTER rw
+def CHANA_NOTE    rb
+def sizeof_CHANNEL equ _RS
 
 section "Timer interrupt", rom0[$0050]
     ei
@@ -19,10 +19,9 @@ section "Audio ROM", rom0
 ;; Initialises the audio system
 AudioInit::
     ; Clear out the audio memory
-    ld hl, wChannelPulse0
-    ld de, wChannelsEnd - wChannelPulse0
+    ld hl, wSoundPulse0
+    ld de, wEnd - wSoundPulse0
     call MemoryClear
-    ldh [hSoundChannels], a
 
     ; Enable the sound controller
     ld a, AUDENA_ON
@@ -50,48 +49,179 @@ AudioInit::
     ret
 
 
-;; Play code shared by all channels
-;; @param  b: Channel flags
+;; Gets the address of the specified channel
+;; @param a: Channel flags
+;; @returns hl: Pointer to the channel data
+;; @effect a: Channel ID
+GetChannelAddr:
+    and a, $3
+    or a, a
+    jr z, .pulse0
+    cp a, 2
+    jr c, .pulse1
+    jr z, .wave
+    ld hl, wSoundNoise
+    ret
+.pulse0:
+    ld hl, wSoundPulse0
+    ret
+.pulse1:
+    ld hl, wSoundPulse1
+    ret
+.wave:
+    ld hl, wSoundWave
+    ret
+
+
+;; @param  b: New channel flags
+;; @param  c: Old channel flags
+;; @param hl: Pointer to the channel data
+;; @saved hl
+SetPulse0Duty:
+    ld a, c
+    ld c, low(rAUD2ENV)
+    jr SetPulseDuty
+
+
+;; @param  b: New channel flags
+;; @param  c: Old channel flags
+;; @param hl: Pointer to the channel data
+;; @saved hl
+SetPulse1Duty:
+    ld a, c
+    ld c, low(rAUD2ENV)
+    ; Falls through to `SetPulseDuty`
+
+
+;; Common code shared by both pulse channels for setting the pulse duty
+;; @param  b: New channel flags
+;; @param  a: Old channel flags
+;; @param  c: NRx2 register
+;; @param hl: Pointer to the pulse channel data
+;; @saved hl
+SetPulseDuty:
+    ; Check if we need to change the wave duty
+    xor a, b
+    and a, $f
+    ret z
+    ; Mute the pulse channel
+    xor a, a
+    ldh [c], a
+    dec c
+    ; Update the pulse duty
+    ld a, b
+    and a, $c
+    swap a
+    ldh [c], a
+    ret
+
+
+;; @param  b: New channel flags
+;; @param  c: Old channel flags
+;; @param hl: Pointer to the channel data
+;; @saved hl
+SetWavePattern:
+    ; Check if we need to change the wave pattern
+    ld a, b
+    xor a, c
+    and a, $f
+    jr z, .return
+    ; Disable and mute the wave channel
+    xor a, a
+    ldh [rAUD3ENA], a
+    ldh [rAUD3LEVEL], a
+    ; Get the address to the wave data we want to use
+    ld a, b
+    and a, $c
+    ; Patterns 0, 1 and 2 are shifted left by 2 so we have to compare against
+    ; 4 to check them
+    cp a, 4
+    jr c, .triPattern
+    jr z, .sawPattern
+    ld hl, WaveOrg
+    jr .setPattern
+.triPattern:
+    ld hl, WaveTri
+    jr .setPattern
+.sawPattern:
+    ld hl, WaveSaw
+
+.setPattern:
+    ld c, low(_AUD3WAVERAM)
+    ; Quickly update the wave RAM
+rept 16
+    ld a, [hl+]
+    ldh [c], a
+    inc c
+endr
+
+    ; Re-enable the channel
+    ld a, AUD3ENA_ON
+    ldh [rAUD3ENA], a
+.return:
+    ; We know what HL would have been so restore it to that
+    ld hl, wSoundWave
+    ret
+
+
+;; Sets the channel flags, updated the audio registers if it needs to
+;; @param a: Channel flags
+;; @returns hl: Pointer to the channel data
+SetChannelFlags:
+    ld b, a
+    call GetChannelAddr
+    ld c, [hl]
+    ld [hl], b
+    or a, a
+    jp z, SetPulse0Duty
+    cp a, 2
+    jp c, SetPulse1Duty
+    jp z, SetWavePattern
+    ; Noise channel ignores the flags
+    ret
+
+
+;; Sets up the channel data and hardware registers for a sound channel
+;; @param  a: Channel flags
+;; @param de: Sound data
+PlaySoundChannel:
+    call SetChannelFlags
+    ; Falls through to `PlayChannel`
+
+
+;; Sets up a channel to start playing a sound on the next audio frame
 ;; @param de: Pointer to sound data
 ;; @param hl: Pointer to the channel data
-PlayCommon:
-    ; Flags
-    ld a, b
-    ld [hl+], a
+PlayChannel:
     ; Speed
     ld a, [de]
     inc de
+    inc hl
     ld [hl+], a
-    ; Falls through to `RestartChannel` below
-
-
-;; Restarts a channel if it is looping
-;; @param de: Pointer to sound data, starting at the length byte
-;; @param hl: Pointer to the channel data, starting at the start address byte
-RestartChannel:
     ; Check if looping is enabled
     ld a, [de]
     ld b, a
     bit 7, b
     jr z, .noLoop
     ; Looping enabled, save the starting address so we can come back
-    ld a, e
+    dec de
+    ld a, c
     ld [hl+], a
-    ld a, d
+    ld a, b
     ld [hl+], a
     ; Remove the looping flag
-    ld a, b
-    and a, $7f
+    res 7, b
+    jr .start
 .noLoop:
     ; Looping disabled, set the start address to $0000 to indicate there is no
     ; looping
     xor a, a
     ld [hl+], a
     ld [hl+], a
-    ld a, b
 .start:
     ; Increment the length by 1 since we insert one dummy note
-    inc a
+    inc b
+    ld a, b
     ld [hl+], a
     ; Current pointer
     inc de
@@ -105,115 +235,16 @@ RestartChannel:
     ret
 
 
-;; @param  d: Channel flags
-;; @param de: Pointer to sound data
-PlayPulse0:
-    ld hl, wChannelPulse0
-    ld c, low(rAUD2ENV)
-    jr PlayPulse
-
-
-;; @param  d: Channel flags
-;; @param de: Pointer to sound data
-PlayPulse1:
-    ld hl, wChannelPulse1
-    ld c, low(rAUD2ENV)
-    ; Falls through to `PlayPulse`
-
-
-;; Common code shared by both pulse channels
-;; @param  b: Channel flags
-;; @param  c: NRx2 register
-;; @param de: Pointer to the channel data
-;; @param hl: Pointer to the pulse channel data
-PlayPulse:
-    ; Check if we need to change the wave duty
-    ld a, [hl]
-    xor a, b
-    and a, $f
-    jr z, .dutyEnd
-    ; Mute the pulse channel
-    xor a, a
-    ldh [c], a
-    dec c
-    ; Update the pulse duty
-    ld a, b
-    and a, $c
-    swap a
-    ldh [c], a
-.dutyEnd:
-    ; Update common channel data
-    jp PlayCommon
-
-
-;; @param  b: Channel flags
-;; @param de: Pointer to sound data
-PlayWave:
-    ; Check if we need to change the wave data
-    ld a, [wChannelWave]
-    xor a, b
-    and a, $f
-    jr z, .waveEnd
-    ; Get the address to the wave data we want to use
-    ; TODO: support other instruments
-    ld hl, WaveTri
-    ld c, low(_AUD3WAVERAM)
-
-    ; Disable and mute the wave channel
-    xor a, a
-    ldh [rAUD3ENA], a
-    ldh [rAUD3LEVEL], a
-    ; Quickly update the wave RAM
-rept 16
-    ld a, [hl+]
-    ldh [c], a
-    inc c
-endr
-    ; Re-enable the channel
-    ld a, AUD3ENA_ON
-    ldh [rAUD3ENA], a
-
-.waveEnd:
-    ; Update common data
-    ld hl, wChannelWave
-    jp PlayCommon
-
-
-;; @param  b: Channel flags
-;; @param de: Pointer to sound data
-PlayNoise:
-    ld hl, wChannelNoise
-    jp PlayCommon
-
-
-;; Starts playing a sound on a specific channel
-;; @param  a: Channel flags
-;; @param bc: Pointer to sound data
-PlayChannel:
-    ld b, a
-    and a, $3
-    or a, a
-    jp z, PlayPulse0
-    cp a, 2
-    jp c, PlayPulse1
-    jp z, PlayWave
-    jp PlayNoise
-
-
 ;; Plays a sound effect
-;; @param b: The sound to play
-;; @param c: Priority, higher priority sounds cannot be overriden by lower
-;;           priority ones. Sounds of the same priority can override each other.
+;; @param a: The sound to play
 AudioPlaySound::
-    ; TODO: implement priority
-    ; TODO: properly stop previous sound
     ; Disable the timer interrupt while we're in critical code
     ld hl, rIE
     res IEB_TIMER, [hl]
     ; Get the sound pointer from the lookup table
     ld h, high(GenSoundTable)
-    ld l, b
-    sla l
+    add a, a
+    ld l, a
     ld a, [hl+]
     ld e, a
     ld d, [hl]
@@ -224,7 +255,7 @@ AudioPlaySound::
     inc de
     swap a
     and a, $0f
-    call PlayChannel
+    call PlaySoundChannel
     pop de
 
     ; Check if the second channel differs from the first
@@ -238,7 +269,7 @@ AudioPlaySound::
     and a, $0f
     ; Set bit 4 to indicate this is the second channel
     set 4, a
-    call PlayChannel
+    call PlaySoundChannel
 
 .return:
     ; Re-enable the timer interrupt and return
@@ -257,6 +288,7 @@ UpdateChannel:
     push bc
     ; Get the speed since we might need it later
     inc hl
+.retry:
     ld a, [hl+]
     ld d, a
     ; Check if this channel is currently playing anything
@@ -290,18 +322,34 @@ UpdateChannel:
     ld a, c
     ld [hl-], a
     ; Decrement the length
-    ; TODO: support looping
     ld a, [hl]
     dec a
     ld [hl-], a
-    jr z, .silence
+    jr z, .end
     ; Check if this note is intended for this channel
     ld bc, -3
     add hl, bc
     ld a, d
     xor a, [hl]
     bit 4, a
-    ret z
+    jr nz, .silence
+    ; Otherwise, call the BC callback
+    ret
+.end:
+    ; Check if looping is enabled by checking the start pointer. We only need to
+    ; check the high byte since all sound effects are in the upper half of ROM.
+    ld a, [hl-]
+    or a, a
+    jr z, .silence
+    ; Finish reading out the start address and restart the channel
+    ld d, a
+    ld e, [hl]
+    push hl
+    ; call RestartChannel
+    pop hl
+    ; Try playing the new next note
+    dec hl
+    jr .retry
 .silence:
     ; This channel should play silence instead
     ld de, $0000
@@ -418,23 +466,26 @@ Timer:
     push de
     push hl
 
+    ; Update the music
+    ; TODO
+
     ; First pulse channel
-    ld hl, wChannelPulse0
+    ld hl, wSoundPulse0
     ld bc, UpdatePulse0
     call UpdateChannel
 
     ; Second pulse channel
-    ld hl, wChannelPulse1
+    ld hl, wSoundPulse1
     ld bc, UpdatePulse1
     call UpdateChannel
 
     ; Wave channel
-    ld hl, wChannelWave
+    ld hl, wSoundWave
     ld bc, UpdateWave
     call UpdateChannel
 
     ; Noise channel
-    ld hl, wChannelNoise
+    ld hl, wSoundNoise
     ld bc, UpdateNoise
     call UpdateChannel
 
@@ -446,18 +497,36 @@ Timer:
 
 
 section "Audio ROMX", romx
-; Just some wave tables for the wave channel
+; Just some wave patterns for the wave channel
 
 WaveTri:
     db $01, $23, $45, $67, $89, $ab, $cd, $ef
     db $fe, $dc, $ba, $98, $76, $54, $32, $10
 
+WaveSaw:
+    ; This is actually the tilted-saw intrument but it sounds better, more SFX
+    ; uses it, and true saw waves can be closely emulated with a 75% pulse wave.
+    db $01, $12, $23, $34, $45, $66, $77, $88
+    db $99, $ab, $bc, $cd, $de, $ef, $fa, $50
+
+WaveOrg:
+    db $02, $46, $9b, $df, $fd, $b9, $64, $20
+    db $01, $23, $45, $67, $76, $54, $32, $10
+
 section "Audio WRAM", wram0
-wChannelPulse0: ds sizeof_CHANNEL
-wChannelPulse1: ds sizeof_CHANNEL
-wChannelWave: ds sizeof_CHANNEL
-wChannelNoise: ds sizeof_CHANNEL
-wChannelsEnd:
+wSoundPulse0: ds sizeof_CHANNEL
+wMusicPulse0: ds sizeof_CHANNEL
+wSoundPulse1: ds sizeof_CHANNEL
+wMusicPulse1: ds sizeof_CHANNEL
+wSoundWave:   ds sizeof_CHANNEL
+wMusicWave:   ds sizeof_CHANNEL
+wSoundNoise:  ds sizeof_CHANNEL
+wMusicNoise:  ds sizeof_CHANNEL
+wEnd:
+wMusicStart: dw
+wMusicPointer: dw
 
 section "Audio HRAM", hram
-hSoundChannels: db
+hMusicSpeed: db
+hMusicLength: db
+hMusicNote: db

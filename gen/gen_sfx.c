@@ -37,8 +37,8 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         //  3: dash
-        SFX_CHAN2(SFX_PULSE1_75, SFX_NOISE),
-        {0, 0, 0, 0, 1, 0, 2, 0}
+        SFX_CHAN1(SFX_NOISE),
+        {0, 0, 0, 0, 1, 0, 1, 0}
     },
     {
         //  4: player spawn jump
@@ -67,8 +67,8 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         //  9: out of dashes
-        SFX_CHAN2(SFX_WAVE_SAW, SFX_NOISE),
-        {0, 1, 0, 0, 0, 0, 2, 0}
+        SFX_CHAN1(SFX_NOISE),
+        {0, 1, 0, 0, 0, 0, 1, 0}
     },
     {
         // 10: music 00, channel 2
@@ -277,8 +277,8 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 51: orb collect
-        SFX_CHAN2(SFX_WAVE_TRI, SFX_PULSE1_50),
-        {0, 0, 0, 2, 0, 0, 0, 1}
+        SFX_CHAN1(SFX_PULSE1_50),
+        {0, 0, 0, 1, 0, 1, 0, 1}
     },
     {
         // 52: music 27, channel 1
@@ -292,8 +292,8 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 54: landing dash recharge
-        SFX_CHAN2(SFX_PULSE1_50, SFX_WAVE_ORG),
-        {0, 0, 0, 1, 0, 2, 0, 0}
+        SFX_CHAN1(SFX_WAVE_ORG),
+        {0, 0, 0, 1, 0, 1, 0, 0}
     },
     {
         // 55: game end (flag)
@@ -352,10 +352,14 @@ typedef struct sfx_note_t {
     uint8_t effect;
 } sfx_note_t;
 
+static float sfx_get_freq(uint8_t pitch) {
+    return 444.0f * powf(2.0f, (pitch - 33) / 12.0f);
+}
+
 static sfx_note_t sfx_get_note(uint8_t *data, const sfx_sound_t *sound) {
     uint16_t raw = (data[0] << 0) | (data[1] << 8);
     sfx_note_t note;
-    note.freq = 440.0f * powf(2.0f, ((raw & 0x003f) - 33) / 12.0f);
+    note.freq = sfx_get_freq(raw & 0x003f);
     note.wave = sound->waves[(raw & 0x01c0) >> 6];
     note.volume = (raw & 0x0e00) >> 9;
     note.effect = sfx_effects[(raw & 0x7000) >> 12];
@@ -393,7 +397,8 @@ static void sfx_gen_wave(sfx_note_t *note) {
 }
 
 static void sfx_gen_noise(sfx_note_t *note) {
-    uint16_t div = 262144.0f / note->freq;
+    float freq = note->freq / sfx_get_freq(63) * 22050.0f;
+    uint16_t div = 262144.0f / freq;
     uint8_t shift = 0;
     while (div > 7) {
         div >>= 1;

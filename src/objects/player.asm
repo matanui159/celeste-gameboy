@@ -198,8 +198,7 @@ rept 2
     ld [hl+], a
 endr
     ; Play the dash sound
-    ld b, 3
-    ld c, 0
+    ld a, 3
     jp AudioPlaySound
 
 
@@ -487,8 +486,7 @@ PlayerUpdate::
     ld b, [hl]
     call SmokeSpawn
     ; Play a jump sound
-    ld b, 1
-    ld c, 0
+    ld a, 1
     call AudioPlaySound
     ; Set the vertical speed to -2
     ld hl, -(2.0 >> 8)

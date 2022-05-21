@@ -65,8 +65,7 @@ PlayerDeathKill::
     ldh [hTimer], a
 
     ; Play the death sound, high priority
-    ld b, 0
-    ld c, 1
+    ld a, 0
     jp AudioPlaySound
 
 
