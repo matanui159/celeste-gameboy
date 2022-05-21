@@ -1,12 +1,12 @@
 include "../hardware.inc"
 
 rsreset
+def CHANA_START   rw
 def CHANA_FLAGS   rb
 def CHANA_SPEED   rb
-def CHANA_START   rw
 def CHANA_LENGTH  rb
-def CHANA_POINTER rw
 def CHANA_NOTE    rb
+def CHANA_POINTER rw
 def sizeof_CHANNEL equ _RS
 
 section "Timer interrupt", rom0[$0050]
@@ -22,6 +22,8 @@ AudioInit::
     ld hl, wSoundPulse0
     ld de, wEnd - wSoundPulse0
     call MemoryClear
+    ; Clear the current music
+    ldh [hMusicLength], a
 
     ; Enable the sound controller
     ld a, AUDENA_ON
@@ -32,6 +34,11 @@ AudioInit::
     ldh [rAUD2ENV], a
     ldh [rAUD3LEVEL], a
     ldh [rAUD4ENV], a
+    ; Set the first pulse channel to 12.5%. We only update the duty if it
+    ; differs from the previous flags and since it is reset to 0, if there was
+    ; a duty of %00 requested, there would be no update. This only affects the
+    ; first channels since it also has a channel ID of %00.
+    ldh [rAUD1LEN], a
     ; Send all channels to both terminals
     ld a, $ff
     ldh [rAUDTERM], a
@@ -49,10 +56,22 @@ AudioInit::
     ret
 
 
+;; Gets the sound pointer from the lookup table
+;; @param a: Sound ID
+;; @returns de: Pointer to the sound data
+GetSoundAddr:
+    ld h, high(GenSoundTable)
+    add a, a
+    ld l, a
+    ld a, [hl+]
+    ld e, a
+    ld d, [hl]
+    ret
+
+
 ;; Gets the address of the specified channel
 ;; @param a: Channel flags
 ;; @returns hl: Pointer to the channel data
-;; @effect a: Channel ID
 GetChannelAddr:
     and a, $3
     or a, a
@@ -73,69 +92,45 @@ GetChannelAddr:
     ret
 
 
-;; @param  b: New channel flags
-;; @param  c: Old channel flags
-;; @param hl: Pointer to the channel data
-;; @saved hl
+;; @param  b: Channel flags
 SetPulse0Duty:
-    ld a, c
-    ld c, low(rAUD2ENV)
+    ld c, low(rAUD1ENV)
     jr SetPulseDuty
 
 
-;; @param  b: New channel flags
-;; @param  c: Old channel flags
-;; @param hl: Pointer to the channel data
-;; @saved hl
+;; @param  b: Channel flags
 SetPulse1Duty:
-    ld a, c
     ld c, low(rAUD2ENV)
     ; Falls through to `SetPulseDuty`
 
 
 ;; Common code shared by both pulse channels for setting the pulse duty
-;; @param  b: New channel flags
-;; @param  a: Old channel flags
+;; @param  b: Channel flags
 ;; @param  c: NRx2 register
-;; @param hl: Pointer to the pulse channel data
-;; @saved hl
 SetPulseDuty:
-    ; Check if we need to change the wave duty
-    xor a, b
-    and a, $f
-    ret z
     ; Mute the pulse channel
     xor a, a
     ldh [c], a
     dec c
     ; Update the pulse duty
     ld a, b
-    and a, $c
-    swap a
+    and a, $c0
     ldh [c], a
     ret
 
 
-;; @param  b: New channel flags
-;; @param  c: Old channel flags
-;; @param hl: Pointer to the channel data
-;; @saved hl
+;; @param  b: Channel flags
 SetWavePattern:
-    ; Check if we need to change the wave pattern
-    ld a, b
-    xor a, c
-    and a, $f
-    jr z, .return
     ; Disable and mute the wave channel
     xor a, a
     ldh [rAUD3ENA], a
     ldh [rAUD3LEVEL], a
     ; Get the address to the wave data we want to use
     ld a, b
-    and a, $c
-    ; Patterns 0, 1 and 2 are shifted left by 2 so we have to compare against
-    ; 4 to check them
-    cp a, 4
+    and a, $c0
+    ; Patterns 0, 1 and 2 are shifted left by 6 so we have to compare against
+    ; $40 to check them
+    cp a, $40
     jr c, .triPattern
     jr z, .sawPattern
     ld hl, WaveOrg
@@ -158,80 +153,57 @@ endr
     ; Re-enable the channel
     ld a, AUD3ENA_ON
     ldh [rAUD3ENA], a
-.return:
     ; We know what HL would have been so restore it to that
-    ld hl, wSoundWave
+    ld hl, wSoundWave + CHANA_SPEED
     ret
 
 
 ;; Sets the channel flags, updated the audio registers if it needs to
-;; @param a: Channel flags
-;; @returns hl: Pointer to the channel data
+;; @param  a: Channel flags
+;; @param hl: Pointer to the current channel flags
+;; @returns hl: Pointer to the channel speed
 SetChannelFlags:
-    ld b, a
-    call GetChannelAddr
     ld c, [hl]
-    ld [hl], b
+    ld [hl+], a
+    ; Check if we need to change the hardware registers
+    ld b, a
+    xor a, c
+    and a, $c3
+    ret z
+    ; Check which channel we are to update said registers
+    ld a, b
+    and a, $03
     or a, a
     jp z, SetPulse0Duty
     cp a, 2
     jp c, SetPulse1Duty
     jp z, SetWavePattern
-    ; Noise channel ignores the flags
+    ; Noise channel does not change anything
     ret
-
-
-;; Sets up the channel data and hardware registers for a sound channel
-;; @param  a: Channel flags
-;; @param de: Sound data
-PlaySoundChannel:
-    call SetChannelFlags
-    ; Falls through to `PlayChannel`
 
 
 ;; Sets up a channel to start playing a sound on the next audio frame
 ;; @param de: Pointer to sound data
-;; @param hl: Pointer to the channel data
-PlayChannel:
+;; @param hl: Pointer to the channel speed
+PlaySound:
     ; Speed
     ld a, [de]
     inc de
-    inc hl
     ld [hl+], a
-    ; Check if looping is enabled
+    ; Length
     ld a, [de]
-    ld b, a
-    bit 7, b
-    jr z, .noLoop
-    ; Looping enabled, save the starting address so we can come back
-    dec de
-    ld a, c
-    ld [hl+], a
-    ld a, b
-    ld [hl+], a
-    ; Remove the looping flag
-    res 7, b
-    jr .start
-.noLoop:
-    ; Looping disabled, set the start address to $0000 to indicate there is no
-    ; looping
-    xor a, a
-    ld [hl+], a
-    ld [hl+], a
-.start:
-    ; Increment the length by 1 since we insert one dummy note
-    inc b
-    ld a, b
-    ld [hl+], a
-    ; Current pointer
     inc de
-    ld a, e
-    ld [hl+], a
-    ld a, d
+    ; Increment the length by 1 since we insert one dummy note
+    inc a
     ld [hl+], a
     ; Current note length. Set to 1 so next audio frame this gets decremented to
     ; 0, causing the first note to be played
-    ld [hl], 1
+    ld a, 1
+    ld [hl+], a
+    ; Current pointer
+    ld a, e
+    ld [hl+], a
+    ld [hl], d
     ret
 
 
@@ -241,38 +213,47 @@ AudioPlaySound::
     ; Disable the timer interrupt while we're in critical code
     ld hl, rIE
     res IEB_TIMER, [hl]
-    ; Get the sound pointer from the lookup table
-    ld h, high(GenSoundTable)
-    add a, a
-    ld l, a
-    ld a, [hl+]
-    ld e, a
-    ld d, [hl]
-
-    ; Setup the first channel
-    push de
+    call GetSoundAddr
+    ; Get the channel flags and write the start address
     ld a, [de]
-    inc de
-    swap a
-    and a, $0f
-    call PlaySoundChannel
-    pop de
-
-    ; Check if the second channel differs from the first
-    ld a, [de]
-    inc de
     ld b, a
-    swap b
-    cp a, b
-    jr z, .return
-    ; If it doesn't, setup the second channel
-    and a, $0f
-    ; Set bit 4 to indicate this is the second channel
-    set 4, a
-    call PlaySoundChannel
-
-.return:
+    call GetChannelAddr
+    ld a, e
+    ld [hl+], a
+    ld a, d
+    ld [hl+], a
+    ; Setup the flags and play the sound
+    ld a, b
+    call SetChannelFlags
+    inc de
+    call PlaySound
     ; Re-enable the timer interrupt and return
+    ld hl, rIE
+    set IEB_TIMER, [hl]
+    ret
+
+
+;; Starts playing a music track
+;; @param bc: Pointer to the music track
+AudioPlayMusic::
+    ; Disable the timer interrupt
+    ld hl, rIE
+    res IEB_TIMER, [hl]
+    ; Save the music track pointer to both the start address and current pointer
+    ld hl, wMusicStart
+rept 2
+    ld a, c
+    ld [hl+], a
+    ld a, b
+    ld [hl+], a
+endr
+    ; Set the music length and note such that the next frame the first set of
+    ; sounds is played
+    ld a, 1
+    ldh [hMusicLength], a
+    ldh [hMusicNote], a
+    ret
+    ; Enable the timer interrupt
     ld hl, rIE
     set IEB_TIMER, [hl]
     ret
@@ -281,84 +262,136 @@ AudioPlaySound::
 ;; Update code shared by all channels. Will check if there is a new note to play
 ;; and if so will call the provided callback with the new note in DE.
 ;;
-;; @param hl: Pointer to the channel data
+;; @param hl: Pointer to the channel flags
 ;; @param bc: Note callback
-UpdateChannel:
+UpdateVirtualChannel:
     ; Save BC for later, this also allows us to use RET to jump to the callback
     push bc
-    ; Get the speed since we might need it later
-    inc hl
 .retry:
+    ; Get the flags for later
     ld a, [hl+]
-    ld d, a
+    ld b, a
+    ; Get the speed for later
+    ld a, [hl+]
+    ld c, a
     ; Check if this channel is currently playing anything
-    inc hl
-    inc hl
     ld a, [hl+]
     or a, a
     jr z, .return
-    ; Get the current pointer since we might need it later
-    ld a, [hl+]
-    ld c, a
-    ld a, [hl+]
-    ld b, a
+    ; Save the length for later
+    ld d, a
     ; Decrement the note counter, return if we are still waiting
     dec [hl]
     jr nz, .return
     ; Current note finished, start the next one
     ; Restart the note using the speed
-    ld a, d
+    ld a, c
     ld [hl-], a
+    ; Decrement the length
+    dec d
+    ld a, d
+    ld [hl+], a
+    jr z, .end
+    ; Read the current pointer
+    inc hl
+    ld a, [hl+]
+    ld c, a
+    ld b, [hl]
     ; Read the next note into DE
     ld a, [bc]
-    ld e, a
     inc bc
+    ld e, a
     ld a, [bc]
     inc bc
     ld d, a
     ; Save the new pointer
     ld a, b
     ld [hl-], a
-    ld a, c
-    ld [hl-], a
-    ; Decrement the length
-    ld a, [hl]
-    dec a
-    ld [hl-], a
-    jr z, .end
-    ; Check if this note is intended for this channel
-    ld bc, -3
-    add hl, bc
-    ld a, d
-    xor a, [hl]
-    bit 4, a
-    jr nz, .silence
-    ; Otherwise, call the BC callback
-    ret
-.end:
-    ; Check if looping is enabled by checking the start pointer. We only need to
-    ; check the high byte since all sound effects are in the upper half of ROM.
-    ld a, [hl-]
-    or a, a
-    jr z, .silence
-    ; Finish reading out the start address and restart the channel
-    ld d, a
-    ld e, [hl]
-    push hl
-    ; call RestartChannel
-    pop hl
-    ; Try playing the new next note
-    dec hl
-    jr .retry
-.silence:
-    ; This channel should play silence instead
-    ld de, $0000
+    ld [hl], c
     ; This will jump to the BC callback we pushed earlier
     ret
+.end:
+    ; Sound has just ended
+    ; Unless looping is enabled, we make the channel play a silent note to stop
+    ; the channel
+    ld de, $0000
+    ; Check if looping is enabled
+    bit 2, b
+    ret z
+    ; Go back to the start address, we are currently pointing at the note
+    ld bc, CHANA_START - CHANA_NOTE
+    add hl, bc
+    ; Read out the start address
+    ld a, [hl+]
+    ld e, a
+    ld a, [hl+]
+    ld d, a
+    inc de
+    ; Replay the sound
+    inc hl
+    call PlaySound
+    ; We need to get back to the channel flags. It just so happens that the
+    ; difference between start and note (-5) is the same difference between
+    ; flags and the high byte of pointer (-5).
+    add hl, bc
+    ; Try playing the new next note
+    jr .retry
 .return:
     ; Pop BC so we don't call the callback
     pop bc
     ret
+
+
+;; A special update callback that just returns again
+UpdateNothing:
+    ret
+
+
+;; Update a physical channel by figuring out which virtual channel
+;; (music or sound) should play.
+;; @param hl: Pointer to the channel length
+;; @param bc: Note callback
+UpdateChannel:
+    ; Check if the sound channel is playing anything
+    ld a, [hl]
+    or a, a
+    jr z, .updateMusic
+    ; Update the sound channel
+    push hl
+    dec hl
+    dec hl
+    call UpdateVirtualChannel
+    ; Check if the sound is now finished
+    pop hl
+    ld a, [hl]
+    or a, a
+    jr nz, .silenceMusic
+    ; If the sound is now finished, update the channel flags back to the music
+    ; Save HL to BC
+    ld b, h
+    ld c, l
+    ; Read out the music flags
+    ld hl, sizeof_CHANNEL + CHANA_FLAGS - CHANA_LENGTH
+    add hl, de
+    ld a, [hl]
+    ; Restore HL and point it to the flags
+    ld h, b
+    ld l, c
+    dec hl
+    dec hl
+    ; Update the flags
+    call SetChannelFlags
+    inc hl
+    ; We still silence it since by this point we have completely lost BC, so
+    ; there is no way to update the music (unless we used the stack more but eh)
+.silenceMusic:
+    ; Replace BC with the NO-OP handler
+    ld bc, UpdateNothing
+.updateMusic:
+    ; Update the music channel
+    ld de, sizeof_CHANNEL + CHANA_FLAGS - CHANA_LENGTH
+    add hl, de
+    jp UpdateVirtualChannel
 
 
 ;; @param de: The note to play
@@ -387,10 +420,8 @@ UpdatePulse:
     add a, a
     or a, b
     ld b, a
-    ; Extract the frequency into DE, frequency has to be shifted left by 1
-    sla e
+    ; Mask out the frequency from DE
     ld a, d
-    rla
     and a, $07
     ; Set the enable flag as well so it is ready
     or a, AUDHIGH_RESTART
@@ -416,9 +447,7 @@ UpdateWave:
     and a, $60
     ld b, a
     ; Extract the frequency into DE
-    sla e
     ld a, d
-    rla
     and a, $07
     ; Set the enable flag
     or a, AUDHIGH_RESTART
@@ -467,25 +496,134 @@ Timer:
     push hl
 
     ; Update the music
-    ; TODO
+    ; Check if any music is playing
+    ldh a, [hMusicLength]
+    or a, a
+    jr z, .musicEnd
+    ; Save length for later
+    ld b, a
+    ; Check if the current note is finished
+    ldh a, [hMusicNote]
+    dec a
+    ldh [hMusicNote], a
+    jr nz, .musicEnd
+    ; Note is finished, decrement the length
+    dec b
+    ld a, b
+    ldh [hMusicLength], a
+    jr nz, .nextNote
+    ; If the length reaches 0, play the next set of sounds
+    ; Setup all the music channels such that unless they get overriden they will
+    ; stop with the next update
+    ld a, 1
+    ld hl, wMusicPulse0 + CHANA_LENGTH
+    ld bc, 2 * sizeof_CHANNEL
+rept 4
+    ld [hl+], a
+    ld [hl-], a
+    add hl, bc
+endr
+    ; Set the length of this frame to 32 notes (the maximum) and clear the
+    ; speed such that we can find the slowest speed
+    ld a, 32
+    ldh [hMusicLength], a
+    xor a, a
+    ldh [hMusicSpeed], a
+    ; Read out the pointer
+    ld hl, wMusicPointer
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+
+.musicLoop:
+    ; Keep starting sounds until the bit 6 is set
+    ld a, [hl+]
+    push af
+    push hl
+    ; Sound ID is in lower 6 bits
+    and a, $3f
+    call GetSoundAddr
+    ; Read out the flags and channel address
+    ld a, [de]
+    call GetChannelAddr
+    ; Check if the channel is currently occupied
+    ld bc, CHANA_LENGTH
+    add hl, bc
+    ld a, [hl-]
+    or a, a
+    jr nz, .playMusic
+    ; It isn't occupied, we can setup the flags now
+    ld a, [de]
+    dec hl
+    call SetChannelFlags
+.playMusic:
+    ; Get a pointer to the music channel
+    ld bc, sizeof_CHANNEL - CHANA_SPEED
+    add hl, bc
+    ; Save the start address and flags
+    ld a, e
+    ld [hl+], a
+    ld a, d
+    ld [hl+], a
+    ld a, [de]
+    inc de
+    ld [hl+], a
+    ; Comare the sound speed to the music speed, storing the larger value
+    ld a, [de]
+    ld b, a
+    ldh a, [hMusicSpeed]
+    cp a, b
+    jr nc, .maxMusicSpeed
+    ; The music speed is less than this channel, swap it
+    ld a, b
+.maxMusicSpeed:
+    ldh [hMusicSpeed], a
+    ; Start the music channel
+    call PlaySound
+    ; End the loop, get more if bit 6 is still zero
+    pop hl
+    pop af
+    bit 6, a
+    jr z, .musicLoop
+    
+    ; Check if that was the last music frame by checking bit 7
+    bit 7, a
+    jr z, .saveMusic
+    ; Use the start address for the next pointer
+    ld hl, wMusicStart
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+.saveMusic:
+    ; Save the music pointer
+    ld a, l
+    ld b, h
+    ld hl, wMusicPointer
+    ld [hl+], a
+    ld [hl], b
+.nextNote:
+    ; Copy the speed over to the note for the next note
+    ldh a, [hMusicSpeed]
+    ldh [hMusicNote], a
+.musicEnd:
 
     ; First pulse channel
-    ld hl, wSoundPulse0
+    ld hl, wSoundPulse0 + CHANA_LENGTH
     ld bc, UpdatePulse0
     call UpdateChannel
 
     ; Second pulse channel
-    ld hl, wSoundPulse1
+    ld hl, wSoundPulse1 + CHANA_LENGTH
     ld bc, UpdatePulse1
     call UpdateChannel
 
     ; Wave channel
-    ld hl, wSoundWave
+    ld hl, wSoundWave + CHANA_LENGTH
     ld bc, UpdateWave
     call UpdateChannel
 
     ; Noise channel
-    ld hl, wSoundNoise
+    ld hl, wSoundNoise + CHANA_LENGTH
     ld bc, UpdateNoise
     call UpdateChannel
 

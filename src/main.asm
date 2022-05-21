@@ -8,8 +8,12 @@ section "Reset $30", rom0[$0030]
 section "Reset $38", rom0[$0038]
     ; We pad the ROM with $ff which is rst $38 so any invalid jumps will end up
     ; here. We just restart the ROM by restoring A and going back to the entry.
-    ldh a, [hMainBoot]
-    jp Entry
+    ; ldh a, [hMainBoot]
+    ; jp Entry
+Crash:
+    di
+.loop:
+    jr .loop
 
 section "Header", rom0[$0100]
 
@@ -76,6 +80,9 @@ Main:
     call HBlankInit
     call InputInit
     call AudioInit
+
+    ld bc, GenMusic00
+    call AudioPlayMusic
 
     ld a, IEF_VBLANK | IEF_STAT | IEF_TIMER
     ldh [rIE], a
