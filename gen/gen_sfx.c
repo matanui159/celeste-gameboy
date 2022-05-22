@@ -6,8 +6,8 @@
 #define SFX_CHAN_WAVE   2
 #define SFX_CHAN_NOISE  3
 
+#define SFX_PULSE_25 0x40
 #define SFX_PULSE_50 0x80
-#define SFX_PULSE_75 0xc0
 #define SFX_WAVE_TRI 0x00
 #define SFX_WAVE_SAW 0x40
 #define SFX_WAVE_ORG 0x80
@@ -139,7 +139,7 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 22: music 01, channel 2
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_PHA
     },
     {
@@ -149,7 +149,7 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 24: music 10, channel 1
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_PULSE
     },
     {
@@ -164,7 +164,7 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 27: music 12, channel 2
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_PULSE
     },
     {
@@ -218,7 +218,7 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 38: start game
-        SFX_CHAN_PULSE1 | SFX_PULSE_75,
+        SFX_CHAN_PULSE1 | SFX_PULSE_25,
         SFX_SAW
     },
     {
@@ -237,12 +237,12 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 42: music 20, channel 1
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_SAW
     },
     {
         // 43: music 22, channel 2
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_SAW
     },
     {
@@ -252,7 +252,7 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 45: music 26, channel 2
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_SAW
     },
     {
@@ -287,12 +287,12 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 52: music 27, channel 1
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_SAW
     },
     {
         // 53: music 28, channel 1
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_SAW
     },
     {
@@ -337,7 +337,7 @@ static const sfx_sound_t sfx_sounds[64] = {
     },
     {
         // 62: music 33, channel 2
-        SFX_CHAN_PULSE0 | SFX_PULSE_75,
+        SFX_CHAN_PULSE0 | SFX_PULSE_25,
         SFX_SAW
     },
     {

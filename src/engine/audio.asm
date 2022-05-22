@@ -259,6 +259,124 @@ endr
     ret
 
 
+;; Updates the music track
+UpdateMusic:
+    ; Check if any music is playing
+    ldh a, [hMusicLength]
+    or a, a
+    ret z
+    ; Save length for later
+    ld b, a
+    ; Check if the current note is finished
+    ldh a, [hMusicNote]
+    dec a
+    ldh [hMusicNote], a
+    ret nz
+    ; Note is finished, decrement the length
+    dec b
+    ld a, b
+    ldh [hMusicLength], a
+    jr nz, .nextNote
+    ; If the length reaches 0, play the next set of sounds
+    ; Setup all the music channels such that unless they get overriden they will
+    ; stop with the next update
+    ; We also have to clear the looping flag so they don't restart
+    ld a, 1
+    ld hl, wMusicPulse0 + CHANA_FLAGS
+    ld bc, 2 * sizeof_CHANNEL + CHANA_FLAGS - CHANA_POINTER
+rept 4
+    res 2, [hl]
+    inc hl
+    inc hl
+    ld [hl+], a
+    ld [hl+], a
+    add hl, bc
+endr
+    ; Set the length of this frame to 32 notes (the maximum) and clear the
+    ; speed such that we can find the slowest speed
+    ld a, 32
+    ldh [hMusicLength], a
+    xor a, a
+    ldh [hMusicSpeed], a
+    ; Read out the pointer
+    ld hl, wMusicPointer
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+
+.soundLoop:
+    ; Keep starting sounds until the bit 6 is set
+    ld a, [hl+]
+    push af
+    push hl
+    ; Sound ID is in lower 6 bits
+    and a, $3f
+    call GetSoundAddr
+    ; Read out the flags and channel address
+    ld a, [de]
+    call GetChannelAddr
+    ; Check if the channel is currently occupied
+    ld bc, CHANA_LENGTH
+    add hl, bc
+    ld a, [hl-]
+    or a, a
+    jr nz, .playSound
+    ; It isn't occupied, we can setup the flags now
+    ld a, [de]
+    dec hl
+    call SetChannelFlags
+.playSound:
+    ; Get a pointer to the music channel
+    ld bc, sizeof_CHANNEL - CHANA_SPEED
+    add hl, bc
+    ; Save the start address and flags
+    ld a, e
+    ld [hl+], a
+    ld a, d
+    ld [hl+], a
+    ld a, [de]
+    inc de
+    ld [hl+], a
+    ; Comare the sound speed to the music speed, storing the larger value
+    ld a, [de]
+    ld b, a
+    ldh a, [hMusicSpeed]
+    cp a, b
+    jr nc, .maxSpeed
+    ; The music speed is less than this channel, swap it
+    ld a, b
+.maxSpeed:
+    ldh [hMusicSpeed], a
+    ; Start the music channel
+    call PlaySound
+    ; End the loop, get more if bit 6 is still zero
+    pop hl
+    pop af
+    bit 6, a
+    jr z, .soundLoop
+
+    ; Check if that was the last music frame by checking bit 7
+    bit 7, a
+    jr z, .savePointer
+    ; Use the start address for the next pointer
+    ld hl, wMusicStart
+    ld a, [hl+]
+    ld h, [hl]
+    ld l, a
+.savePointer:
+    ; Save the music pointer
+    ld a, l
+    ld b, h
+    ld hl, wMusicPointer
+    ld [hl+], a
+    ld [hl], b
+.nextNote:
+    ; Copy the speed over to the note for the next note
+    ldh a, [hMusicSpeed]
+    ldh [hMusicNote], a
+    ret
+
+
 ;; Update code shared by all channels. Will check if there is a new note to play
 ;; and if so will call the provided callback with the new note in DE.
 ;;
@@ -339,7 +457,7 @@ UpdateVirtualChannel:
 .return:
     ; Pop BC so we don't call the callback
     pop bc
-    ret
+    ; Fall through to `UpdateNothing` to share the one byte of RET
 
 
 ;; A special update callback that just returns again
@@ -370,9 +488,15 @@ UpdateChannel:
     ; Save HL to BC
     ld b, h
     ld c, l
+    ; Check if the music channel is playing anything
+    ld hl, sizeof_CHANNEL
+    add hl, bc
+    ld a, [hl]
+    or a, a
+    jr z, .silenceMusic
     ; Read out the music flags
-    ld hl, sizeof_CHANNEL + CHANA_FLAGS - CHANA_LENGTH
-    add hl, de
+    dec hl
+    dec hl
     ld a, [hl]
     ; Restore HL and point it to the flags
     ld h, b
@@ -496,116 +620,7 @@ Timer:
     push hl
 
     ; Update the music
-    ; Check if any music is playing
-    ldh a, [hMusicLength]
-    or a, a
-    jr z, .musicEnd
-    ; Save length for later
-    ld b, a
-    ; Check if the current note is finished
-    ldh a, [hMusicNote]
-    dec a
-    ldh [hMusicNote], a
-    jr nz, .musicEnd
-    ; Note is finished, decrement the length
-    dec b
-    ld a, b
-    ldh [hMusicLength], a
-    jr nz, .nextNote
-    ; If the length reaches 0, play the next set of sounds
-    ; Setup all the music channels such that unless they get overriden they will
-    ; stop with the next update
-    ld a, 1
-    ld hl, wMusicPulse0 + CHANA_LENGTH
-    ld bc, 2 * sizeof_CHANNEL
-rept 4
-    ld [hl+], a
-    ld [hl-], a
-    add hl, bc
-endr
-    ; Set the length of this frame to 32 notes (the maximum) and clear the
-    ; speed such that we can find the slowest speed
-    ld a, 32
-    ldh [hMusicLength], a
-    xor a, a
-    ldh [hMusicSpeed], a
-    ; Read out the pointer
-    ld hl, wMusicPointer
-    ld a, [hl+]
-    ld h, [hl]
-    ld l, a
-
-.musicLoop:
-    ; Keep starting sounds until the bit 6 is set
-    ld a, [hl+]
-    push af
-    push hl
-    ; Sound ID is in lower 6 bits
-    and a, $3f
-    call GetSoundAddr
-    ; Read out the flags and channel address
-    ld a, [de]
-    call GetChannelAddr
-    ; Check if the channel is currently occupied
-    ld bc, CHANA_LENGTH
-    add hl, bc
-    ld a, [hl-]
-    or a, a
-    jr nz, .playMusic
-    ; It isn't occupied, we can setup the flags now
-    ld a, [de]
-    dec hl
-    call SetChannelFlags
-.playMusic:
-    ; Get a pointer to the music channel
-    ld bc, sizeof_CHANNEL - CHANA_SPEED
-    add hl, bc
-    ; Save the start address and flags
-    ld a, e
-    ld [hl+], a
-    ld a, d
-    ld [hl+], a
-    ld a, [de]
-    inc de
-    ld [hl+], a
-    ; Comare the sound speed to the music speed, storing the larger value
-    ld a, [de]
-    ld b, a
-    ldh a, [hMusicSpeed]
-    cp a, b
-    jr nc, .maxMusicSpeed
-    ; The music speed is less than this channel, swap it
-    ld a, b
-.maxMusicSpeed:
-    ldh [hMusicSpeed], a
-    ; Start the music channel
-    call PlaySound
-    ; End the loop, get more if bit 6 is still zero
-    pop hl
-    pop af
-    bit 6, a
-    jr z, .musicLoop
-    
-    ; Check if that was the last music frame by checking bit 7
-    bit 7, a
-    jr z, .saveMusic
-    ; Use the start address for the next pointer
-    ld hl, wMusicStart
-    ld a, [hl+]
-    ld h, [hl]
-    ld l, a
-.saveMusic:
-    ; Save the music pointer
-    ld a, l
-    ld b, h
-    ld hl, wMusicPointer
-    ld [hl+], a
-    ld [hl], b
-.nextNote:
-    ; Copy the speed over to the note for the next note
-    ldh a, [hMusicSpeed]
-    ldh [hMusicNote], a
-.musicEnd:
+    call UpdateMusic
 
     ; First pulse channel
     ld hl, wSoundPulse0 + CHANA_LENGTH

@@ -7,13 +7,10 @@ section "Reset $30", rom0[$0030]
 
 section "Reset $38", rom0[$0038]
     ; We pad the ROM with $ff which is rst $38 so any invalid jumps will end up
-    ; here. We just restart the ROM by restoring A and going back to the entry.
-    ; ldh a, [hMainBoot]
-    ; jp Entry
-Crash:
-    di
-.loop:
-    jr .loop
+    ; here. Here we freeze the program to indicate a crash.
+    xor a, a
+    ldh [rIE], a
+    halt
 
 section "Header", rom0[$0100]
 
