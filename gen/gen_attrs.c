@@ -15,10 +15,6 @@ int main(void) {
         uint8_t attr = pal;
         attr |= (*data & 0x01) << 3; // solid
         attr |= (*data & 0x10) << 0; // ice
-        // mark fall floors as solid
-        if (pal == 2) {
-            attr |= 0x08;
-        }
         printf("$%02x", attr);
     }
     printf("\n");

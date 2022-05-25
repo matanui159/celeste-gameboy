@@ -112,23 +112,37 @@ FindTilesAtPlayer:
     ret
 
 
-;; Gets the flags of a specific tile and ORs it with any existing flags
-;; @param a: Tile ID
-;; @param d: Existing flags
-;; @returns d: Updated Flags
-OrTileFlags:
+;; Calls collision routines for any solid tiles based on the tile ID.
+;; Will also get the flags of the tile and OR it with any existing flags.
+;; @param  a: Tile ID
+;; @param bc: Collide position
+;; @param  d: Exisiting flags
+;; @returns d: Updated flags
+;; @saved hl
+;; @saved bc
+CollideSolidTile:
     ld h, high(GenAttrs)
     ld l, a
     ld a, [hl]
     or a, d
     ld d, a
+    ; Restore A so we can check it later
+    ld a, l
     ; Restore HL since we know if we're here, HL is pointing to this callback
-    ld hl, OrTileFlags
+    ld hl, CollideSolidTile
+    cp a, 64
+    jp z, FakeWallCollideTopLeft
+    cp a, 65
+    jp z, FakeWallCollideTopRight
+    cp a, 80
+    jp z, FakeWallCollideBottomLeft
+    cp a, 81
+    jp z, FakeWallCollideBottomRight
     ret
 
 
-;; Calls collision routines based on the tile ID.
-;; @param a: Tile ID
+;; Calls collision routines for any non-solid tiles based on the tile ID.
+;; @param  a: Tile ID
 ;; @param bc: Collide position
 ;; @saved hl
 ;; @saved bc
@@ -161,7 +175,7 @@ MovePlayerX:
     ; Check in which direction we are moving
     bit 7, h
     ; Setup the tile callback ready
-    ld hl, OrTileFlags
+    ld hl, CollideSolidTile
     ld d, 0
     jr nz, .moveLeft
 
@@ -229,7 +243,7 @@ MovePlayerY:
     ; Save H into E for now since we might need it later
     ld e, h
     ; Setup the tile callback
-    ld hl, OrTileFlags
+    ld hl, CollideSolidTile
     ld d, 0
     jr nz, .moveUp
 
@@ -347,6 +361,9 @@ PhysicsMovePlayer::
     ; movement
     call MovePlayerY
 
-    ; Check for collisions, BC is the new position due to effect from MovePlayerY
+    ; Check for non-solid collisions, BC is the new position due to effect from
+    ; MovePlayerY. We do this in its own step (compared to merging it in with
+    ; `CollideSolidTile`) since we don't want the player to collide with stuff
+    ; like spikes when they move into a solid block.
     ld hl, CollideTile
     jp FindTilesAtPlayer

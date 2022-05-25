@@ -34,7 +34,7 @@ PlayerSpawn::
     ; Set the inital dash count
     ; TODO: make this modifiable using a "max dash" variable
     ld a, 1
-    ldh [hDashCount], a
+    ldh [hPlayerDashCount], a
     pop hl
     ret
 
@@ -292,6 +292,9 @@ PlayerUpdate::
     cp a, -4
     jr nc, .checkEndY
 .loadNextLevel:
+    ; Uncollect the fruit so it spawns on the next map
+    xor a, a
+    ldh [hFruitCollected], a
     ; Go to the next map
     ld a, b
     inc a
@@ -329,19 +332,19 @@ PlayerUpdate::
 .onGround:
     ; If the player is on the ground reset the dash count
     ld a, 1
-    ldh [hDashCount], a
+    ldh [hPlayerDashCount], a
     ; Reset the grace period
     ld a, 6
 .graceEnd:
     ldh [hGrace], a
 
     ; If we are in a dash, apply the acceleration for 4 frames
-    ldh a, [hDashTime]
+    ldh a, [hPlayerDashTime]
     or a, a
     jr z, .dashAccelEnd
     ; Decrement the dash timer
     dec a
-    ldh [hDashTime], a
+    ldh [hPlayerDashTime], a
     ; Accelerate the X speed
     ld hl, wPlayerSpeedX
     call DashAccelerate
@@ -505,14 +508,14 @@ PlayerUpdate::
     bit PADB_B, a
     jr z, .dashEnd
     ; Check if the player has any dashes left
-    ldh a, [hDashCount]
+    ldh a, [hPlayerDashCount]
     or a, a
     jr z, .dashEnd
     ; Update the dash count and dash timer
     dec a
-    ldh [hDashCount], a
+    ldh [hPlayerDashCount], a
     ld a, 4
-    ldh [hDashTime], a
+    ldh [hPlayerDashTime], a
     ; Call the dash subroutine
     call StartDash
 .dashEnd:
@@ -619,7 +622,7 @@ PlayerUpdate::
 .clampEnd:
 
     ; Update the hair palette
-    ldh a, [hDashCount]
+    ldh a, [hPlayerDashCount]
     ld b, a
     jp PlayerHairPalette
 
@@ -634,17 +637,19 @@ wDashAccelX: dw
 wDashAccelY: dw
 wEnd:
 
+section "Player common HRAM", hram
+hPlayerType:: db
+
 section union "Player HRAM", hram
-hPlayerType: db
 hStart:
 ; The first two HRAM variables must not be updated by the physics engine since
 ; if at some point during a physics update the player dies, we don't wanna
 ; overwrite the two death HRAM variables during the rest of the physics update.
 hJumpBuffer: db
 hGrace: db
+hPlayerGroundFlags:: db
 hPlayerRemX:: db
 hPlayerRemY:: db
-hPlayerGroundFlags:: db
-hDashCount: db
-hDashTime: db
+hPlayerDashCount:: db
+hPlayerDashTime:: db
 hEnd:

@@ -4,15 +4,14 @@ include "../hardware.inc"
 section "Player spawn ROM", rom0
 
 
-;; @param l: Tile position
+;; @param hl: Tile address
+;; @saved hl
 PlayerSpawnLoad::
     push hl
     ; Clear out the tile the player is at
     xor a, a
-    call MapTileUpdate
-    ; Restore HL since the update overwrites it
-    pop hl
-    push hl
+    ld [hl], a
+    ; Get the tile position
     call MapTilePosition
     ; Save the target Y
     ld a, c
@@ -147,7 +146,6 @@ PlayerSpawnUpdate::
 
 
 section union "Player HRAM", hram
-hPlayerType: db
 hState: db
 hTimer: db
 hTargetY: db

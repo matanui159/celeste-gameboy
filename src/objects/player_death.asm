@@ -183,7 +183,6 @@ PlayerDeathUpdate::
 
 
 section union "Player HRAM", hram
-hPlayerType: db
 hTimer: db
 ; The color of the players palette upon death
 hPalette: db

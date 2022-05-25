@@ -80,6 +80,8 @@ CopyMapDMA:
 LoadTile:
     cp a, 1
     jp z, PlayerSpawnLoad
+    cp a, 64
+    jp z, FakeWallLoad
     ret
 
 
@@ -89,9 +91,11 @@ MapLoad::
     ; Calculate the target address high-byte now and put into D
     add a, high(GenMaps)
     ld d, a
+
     ; Clear the objects
     call ObjectsClear
     call PlayerClear
+    call FruitClear
 
     ; Copy the map to our buffer
     ld hl, wMapTiles
@@ -228,8 +232,10 @@ MapInit::
     ld a, -8
     ldh [rSCY], a
 
-    ; Load the first map
+    ; Setup fruits to spawn for the first map
     xor a, a
+    ldh [hFruitCollected], a
+    ; Load the first map
     jp MapLoad
 
 
@@ -271,7 +277,8 @@ MapTilePosition::
 
 ;; Finds the nearest tile to the provided position
 ;; @param bc: X and Y position
-;; @returns a: Tile ID at the given position, or 0 if the position is off the map
+;; @returns hl: The tile address
+;; @returns  a: Tile ID at the given position, or 0 if the position is off the map
 ;; @saved bc
 MapFindTileAt::
     ; X position (low nybble)
