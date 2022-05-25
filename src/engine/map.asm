@@ -80,6 +80,8 @@ CopyMapDMA:
 LoadTile:
     cp a, 1
     jp z, PlayerSpawnLoad
+    cp a, 26
+    jp z, FruitLoad
     cp a, 64
     jp z, FakeWallLoad
     ret

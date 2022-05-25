@@ -18,6 +18,7 @@ CELESTE_OBJ = \
 	bin/gen/gen_music.obj \
 	bin/src/main.obj \
 	bin/src/memory.obj \
+	bin/src/math.obj \
 	bin/src/random.obj \
 	bin/src/engine/video.obj \
 	bin/src/engine/object.obj \

@@ -95,6 +95,7 @@ Main:
     call Random
     call InputUpdate
     call PlayerUpdate
+    call FruitUpdate
     call SmokeUpdate
     ; Wait for two frames so we run at 30Hz
     ld b, 2

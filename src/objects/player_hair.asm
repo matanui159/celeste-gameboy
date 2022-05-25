@@ -3,53 +3,6 @@ include "../hardware.inc"
 section "Player hair ROM", rom0
 
 
-;; Performs modulo 6 on an 8-bit value
-;; @param a: Input value
-;; @param a: Modulo 6 of the input
-ModuloSix:
-    ; Modulo values for each bit are:
-    ;  0:  1
-    ;  1:  2
-    ;  2: -2
-    ;  3:  2
-    ;  4: -2
-    ;  5:  2
-    ;  6: -2
-    ;  7:  2
-    ; We can leave the lower 2 bits as is
-    ld b, a
-    and a, $03
-    srl b
-    srl b
-    ld c, a
-    ; Decrement for each even bit and increment for each odd bit
-    xor a, a
-    ; Save zero into D so we can use it in ADC later
-    ld d, a
-rept 3
-    srl b
-    sbc a, d
-    srl b
-    adc a, d
-endr
-    ; Times by 2 (since each inc/dec is +/-2) and add the low 2 bits
-    add a, a
-    add a, c
-    ; Handle negative values
-    bit 7, a
-    jr nz, .neg
-    ; If the value is <6 we can return now
-    cp a, 6
-    ret c
-    ; Otherwise, subtract 6
-    sub a, 6
-    ret
-.neg:
-    ; If the value is negative, return 6+A
-    add a, 6
-    ret
-
-
 ;; Updates the players palette based on how many dashes they have
 ;; @param b: Dash count
 PlayerHairPalette::
@@ -75,7 +28,7 @@ PlayerHairPalette::
     ; (<3) or palette 3 (>=3)
     ldh a, [hMainFrame]
     push de
-    call ModuloSix
+    call MathModuloSix
     pop de
     cp a, 3
     jr c, .end

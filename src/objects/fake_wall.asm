@@ -160,7 +160,17 @@ WallCollide:
     ld a, b
     sub a, 8
     ld b, a
+    push bc
     call SmokeSpawn
+    pop bc
+    ; Fruit
+    ld a, b
+    add a, 4
+    ld b, a
+    ld a, c
+    add a, 4
+    ld c, a
+    call FruitSpawn
 
     ; Read the player X speed
     ld hl, wPlayerSpeedX + 1
