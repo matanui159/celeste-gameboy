@@ -4,16 +4,12 @@ include "../hardware.inc"
 def MAP_X_B equ 16
 def MAP_Y_B equ 16
 
-; Arbitrary limit of updates per frame, matches the size of `wObjects`
-def MAP_UPDATES equ 20
-
 ; Constants for some opcodes
 def OP_LD_A_D8  equ $3e
 def OP_LD_A16_A equ $ea
 def OP_RET      equ $c9
 
 section "Map ROM", rom0
-; TODO: maybe all this should be renamed to "room" to match the original code
 
 
 ;; Clears the update queue
@@ -94,6 +90,8 @@ MapLoad::
     add a, high(GenMaps)
     ld d, a
 
+    ; Show the title
+    call UIShowTitle
     ; Clear the objects
     call ObjectsClear
     call PlayerClear
@@ -195,7 +193,7 @@ MapLoad::
     ; Enable LCD and return
     ; We still do this on CGB since if this is the first call, the LCD would
     ; already be disabled
-    ld a, LCDCF_BGON | LCDCF_BG8000 | LCDCF_ON
+    ld a, LCDCF_BGON | LCDCF_BG8000 | LCDCF_WIN9C00 | LCDCF_ON
     ldh [rLCDC], a
     ret
 
@@ -205,9 +203,9 @@ MapInit::
     ; Clear the update queue so the first load doesn't do anything funky with
     ; memory
     call ClearQueue
-    ; Clear out the tiles in screen 0
+    ; Clear out the VRAM tile maps
     ld hl, _SCRN0
-    ld de, SCRN_VX_B * SCRN_VY_B
+    ld de, SCRN_VX_B * SCRN_VY_B * 2
     call MemoryClear
 
     ; Check if we have to clear attributes and CGB buffers
@@ -222,7 +220,7 @@ MapInit::
     ld a, 1
     ldh [rVBK], a
     ld hl, _SCRN0
-    ld de, SCRN_VX_B * SCRN_VY_B
+    ld de, SCRN_VX_B * SCRN_VY_B * 2
     call MemoryClear
     ; Swap back to VRAM bank 0 using effect from MemoryClear
     ldh [rVBK], a
@@ -323,27 +321,12 @@ MapFindTileAt::
     ret
 
 
-;; Updates a tile in the map
-;; @param a: Tile ID
-;; @param l: Tile position
-MapTileUpdate::
-    ld h, high(wMapTiles)
-    ld [hl], a
+;; Queues a VRAM tile map update
+;; @param  a: Tile ID
+;; @param bc: VRAM address
+MapQueueUpdate::
     ; Save A for later
     push af
-
-    ; Figure out the address in VRAM
-    ; The virtual screen width is twice that of the map so we have to multiply
-    ; Y by 2 (adding it an extra time)
-    ld h, high(_SCRN0)
-    ld b, 0
-    ld a, l
-    and a, $f0
-    ld c, a
-    add hl, bc
-    ld b, h
-    ld c, l
-
     ; Find the end of the update queue (RET)
     ; We subtract 5 so that the first iteration can add 5
     ld hl, wUpdateQueue - 5
@@ -374,6 +357,30 @@ MapTileUpdate::
     ret
 
 
+;; Updates a tile in the map
+;; @param a: Tile ID
+;; @param l: Tile position
+MapTileUpdate::
+    ld h, high(wMapTiles)
+    ld [hl], a
+    ; Save A for later
+    ld d, a
+    ; Figure out the address in VRAM
+    ; The virtual screen width is twice that of the map so we have to multiply
+    ; Y by 2 (adding it an extra time)
+    ld h, high(_SCRN0)
+    ld b, 0
+    ld a, l
+    and a, $f0
+    ld c, a
+    add hl, bc
+    ; Queue an update
+    ld a, d
+    ld b, h
+    ld c, l
+    jp MapQueueUpdate
+
+
 section fragment "VBlank", rom0
 VBlankMap:
     call wUpdateQueue
@@ -384,9 +391,8 @@ section "Map WRAM", wram0, align[8]
 wMapTiles:: ds MAP_X_B * MAP_Y_B
 wCgbTiles: ds SCRN_VX_B * MAP_Y_B
 wCgbAttrs: ds SCRN_VX_B * MAP_Y_B
-; 5 bytes required for `ld a, <value>; ld [<addr>], a` and 1 byte for `ret`
-wUpdateQueue: ds MAP_UPDATES * 5 + 1
-
+; The size of this is quite arbitrary, an entire page should be plenty
+wUpdateQueue: ds $100
 
 section "Map HRAM", hram
 hMapIndex:: db

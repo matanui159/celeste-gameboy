@@ -642,6 +642,9 @@ Timer:
     ld bc, UpdateNoise
     call UpdateChannel
 
+    ; Update the UI timer, since we are in a timer interrupt
+    call UIUpdateTimer
+
     pop hl
     pop de
     pop bc

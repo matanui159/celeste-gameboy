@@ -144,13 +144,14 @@ typedef struct gen_text_t {
 } gen_text_t;
 
 static gen_text_t gen_text_lines[] = {
+    // This has to be first so it can be accessed by the window in $8000 mode
+    {"TextTimeSeperator", "::"},
     {"TextTitle0", " a+b"},
     {"TextTitle1", " maddy thorson"},
     {"TextTitle2", "noel berry"},
     {"TextRoomHeight", " m"},
     {"TextRoomOldSite", "old site"},
     {"TextRoomSummit", "summit"},
-    {"TextTimeSeperator", "::"},
     {"TextOldSite0", "-- celeste mountain --"},
     {"TextOldSite1", "this memorial to those"},
     {"TextOldSite2", " perished on the climb"},

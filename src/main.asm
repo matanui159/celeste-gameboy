@@ -73,11 +73,12 @@ Main:
     call VideoInit
     call ObjectsInit
     call MapInit
-    call PlayerInit
-    call SmokeInit
     call HBlankInit
     call InputInit
     call AudioInit
+    call UIInit
+    call PlayerInit
+    call SmokeInit
 
     ld bc, GenMusic00
     call AudioPlayMusic
@@ -95,6 +96,7 @@ Main:
     ; Add more entropy to the randomiser
     call Random
     call InputUpdate
+    call UIUpdate
     call PlayerUpdate
     call FruitUpdate
     call SmokeUpdate

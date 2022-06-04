@@ -20,9 +20,8 @@ static uint8_t text_find_index(text_pair_t *pairs, const text_pair_t pr) {
 static void text_print_halfrow(uint8_t *font, uint8_t c, size_t y) {
     size_t tile_x = c % 16;
     size_t tile_y = c / 16;
-    uint8_t *data = &font[((tile_y * 8 + y - 2) * 16 + tile_x) * 8];
+    uint8_t *data = &font[((tile_y * 8 + y - 1) * 16 + tile_x) * 8 - 1];
     for (size_t x = 0; x < 4; x += 1) {
-        // TODO: compress this data down to 1-bit per pixel
         printf(data[x] < 128 ? "0" : "1");
     }
 }

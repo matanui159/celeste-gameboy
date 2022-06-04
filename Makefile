@@ -26,6 +26,7 @@ CELESTE_OBJ = \
 	bin/src/engine/hblank.obj \
 	bin/src/engine/input.obj \
 	bin/src/engine/audio.obj \
+	bin/src/ui.obj \
 	bin/src/objects/physics.obj \
 	bin/src/objects/player.obj \
 	bin/src/objects/player_hair.obj \
