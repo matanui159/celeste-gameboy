@@ -367,3 +367,42 @@ PhysicsMovePlayer::
     ; like spikes when they move into a solid block.
     ld hl, CollideTile
     jp FindTilesAtPlayer
+
+
+;; Check if the specified collision box intersects with the player
+;; @param bc: Collision box position
+;; @param de: Collision box size
+;; @returns a: 0 if theres no intersection, 1 otherwise
+PhysicsCheckPlayer::
+    ; Calculate the bottom-right point of the box
+    ld a, b
+    add a, d
+    ld d, a
+    ld a, c
+    add a, e
+    ld e, a
+    ; Read the player Y
+    ld hl, wObjectPlayer
+    ld a, [hl+]
+    ; Check the bottom side
+    add a, 3
+    cp a, e
+    jr nc, .miss
+    ; Check the top side
+    add a, 5
+    cp a, c
+    jr c, .miss
+    ; Check the right side
+    ld a, [hl-]
+    inc a
+    cp a, d
+    jr nc, .miss
+    ; Check the left side
+    add a, 6
+    cp a, b
+    jr c, .miss
+    ld a, 1
+    ret
+.miss:
+    xor a, a
+    ret

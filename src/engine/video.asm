@@ -79,11 +79,13 @@ endr
     jr z, .cgbPalettes
 
     ; Setup DMG palettes
-    ; The palette we use is inverse of the default DMG palette where 11 is white
-    ; and 00 is black.
+    ; The palette we use is inverse of the default DMG palette where 3 is white
+    ; and 0 is black.
     ld a, %00_01_10_11
     ldh [rBGP], a
     ldh [rOBP0], a
+    ; Setup the second object palette with color 3 also a dark grey
+    ld a, %10_01_10_11
     ldh [rOBP1], a
     jr .palettesEnd
 

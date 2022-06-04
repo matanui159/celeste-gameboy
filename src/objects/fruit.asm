@@ -57,6 +57,15 @@ FruitLoad::
 
 ;; Updates the fruit objects
 FruitUpdate::
+    ; Ignore this update if there are skip frames
+    ldh a, [hFruitSkip]
+    or a, a
+    jr z, .skipEnd
+    ; Decrement the skip frames and return
+    dec a
+    ldh [hFruitSkip], a
+    ret
+.skipEnd:
     ; Check the fruit type to see which routine we need to call
     ldh a, [hFruitType]
     cp a, FRUIT_NORMAL
@@ -67,8 +76,7 @@ FruitUpdate::
     cp a, FRUIT_LIFEUP
     ; TODO: support flying fruit
     ret c
-    ; TODO: support lifeup animations
-    ret z
+    jp z, LifeupUpdate
     ; TODO: support chests and key
     ret
 
@@ -96,13 +104,36 @@ endr
     ldh a, [hStartY]
     add a, b
     ; Save the new Y position
-    ld [wObjectsFruit + OAMA_Y], a
-    ret
+    ld hl, wObjectsFruit
+    ld [hl+], a
+
+    ; Get the X and Y position
+    ld b, [hl]
+    ld c, a
+    ; Check if it collides with the player
+    ld de, $0808
+    call PhysicsCheckPlayer
+    or a, a
+    ; End now if it doesn't
+    ret z
+    ; Reset the player dash count
+    ; TODO: we really gotta get ourselves a max dashes variable
+    ld a, 1
+    ldh [hPlayerDashCount], a
+    ; Mark the fruit as collected so it doesn't respawn
+    ; ld a, 1
+    ldh [hFruitCollected], a
+    ; Start the lifeup animation
+    call LifeupSpawn
+    ; Play a sound, JP so it returns afterwards
+    ld a, 13
+    jp AudioPlaySound
 
 
 section "Fruit common HRAM", hram
 hFruitType:: db
 hFruitCollected:: db
+hFruitSkip:: db
 
 section union "Fruit HRAM", hram
 hStartY: db

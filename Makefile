@@ -32,6 +32,7 @@ CELESTE_OBJ = \
 	bin/src/objects/player_spawn.obj \
 	bin/src/objects/player_death.obj \
 	bin/src/objects/fruit.obj \
+	bin/src/objects/lifeup.obj \
 	bin/src/objects/fake_wall.obj \
 	bin/src/objects/spikes.obj \
 	bin/src/objects/smoke.obj \

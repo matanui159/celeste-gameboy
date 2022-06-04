@@ -171,6 +171,9 @@ WallCollide:
     add a, 4
     ld c, a
     call FruitSpawn
+    ; Set 1 skip frame so the player doesn't collect it immediately
+    ld a, 1
+    ldh [hFruitSkip], a
 
     ; Read the player X speed
     ld hl, wPlayerSpeedX + 1

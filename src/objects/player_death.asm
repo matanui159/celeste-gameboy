@@ -91,8 +91,8 @@ UpdateDeathParticle:
     ; Toggle the palette
     ldh a, [hPalette]
     xor a, [hl]
-    ; Palette for white
-    xor a, 2
+    ; Toggle into the white palette, while also toggling the DMG palette
+    xor a, 2 | OAMF_PAL1
     ld [hl+], a
     ret
 
@@ -156,18 +156,7 @@ PlayerDeathUpdate::
     ; South
     ld c, 3
     call UpdateDeathParticle
-
-    ; Check if we are on DMG
-    ldh a, [hMainBoot]
-    cp a, BOOTUP_A_CGB
-    ret z
-    ; If we are, we want the particles to flash between dark grey and white.
-    ; To do this we reuse the hair code since that is able to update the DMG
-    ; palette. We switch between 0 and 1 dashes, using the timer.
-    ldh a, [hTimer]
-    and a, $01
-    ld b, a
-    jp PlayerHairPalette
+    ret
 
 .destroy:
     ; If the timer is exactly 5, destroy the particles
