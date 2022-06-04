@@ -73,6 +73,7 @@ Main:
     call VideoInit
     call ObjectsInit
     call MapInit
+    call PlayerInit
     call SmokeInit
     call HBlankInit
     call InputInit

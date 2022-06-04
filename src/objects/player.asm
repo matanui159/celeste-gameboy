@@ -5,6 +5,13 @@ include "../attrs.inc"
 section "Player ROM", rom0
 
 
+;; Initializes the player related code
+PlayerInit::
+    ld a, 1
+    ldh [hPlayerDashMax], a
+    ret
+
+
 ;; Removes the player
 PlayerClear::
     ; Set the player type to NONE (0)
@@ -32,8 +39,7 @@ PlayerSpawn::
     ld a, 1 << ATTRB_SOLID
     ldh [hPlayerGroundFlags], a
     ; Set the inital dash count
-    ; TODO: make this modifiable using a "max dash" variable
-    ld a, 1
+    ldh a, [hPlayerDashMax]
     ldh [hPlayerDashCount], a
     pop hl
     ret
@@ -330,9 +336,17 @@ PlayerUpdate::
     dec a
     jr .graceEnd
 .onGround:
-    ; If the player is on the ground reset the dash count
-    ld a, 1
+    ; If the player is on the ground, check if we need to reset the dash count
+    ldh a, [hPlayerDashCount]
+    ld b, a
+    ldh a, [hPlayerDashMax]
+    cp a, b
+    jr z, .groundResetEnd
+    ; Reset the dash count and play a sound effect
     ldh [hPlayerDashCount], a
+    ld a, 54
+    call AudioPlaySound
+.groundResetEnd:
     ; Reset the grace period
     ld a, 6
 .graceEnd:
@@ -639,6 +653,7 @@ wEnd:
 
 section "Player common HRAM", hram
 hPlayerType:: db
+hPlayerDashMax:: db
 
 section union "Player HRAM", hram
 hStart:

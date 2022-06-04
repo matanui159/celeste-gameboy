@@ -117,8 +117,7 @@ endr
     ; End now if it doesn't
     ret z
     ; Reset the player dash count
-    ; TODO: we really gotta get ourselves a max dashes variable
-    ld a, 1
+    ldh a, [hPlayerDashMax]
     ldh [hPlayerDashCount], a
     ; Mark the fruit as collected so it doesn't respawn
     ; ld a, 1

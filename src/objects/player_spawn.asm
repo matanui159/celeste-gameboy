@@ -141,7 +141,8 @@ PlayerSpawnUpdate::
     add a, b
     ld [hl], a
     ; Update the player hair palette
-    ld b, 1
+    ldh a, [hPlayerDashMax]
+    ld b, a
     jp PlayerHairPalette
 
 

@@ -28,9 +28,9 @@ PlayerHairPalette::
     ; Calculate the modulo 6 of the current frame to see if we need palette 2
     ; (<3) or palette 3 (>=3)
     ldh a, [hMainFrame]
-    push de
+    push bc
     call MathModuloSix
-    pop de
+    pop bc
     cp a, 3
     jr c, .end
     ; If we want palette 3 we need to set bit 0. On DMG we want to remove the
